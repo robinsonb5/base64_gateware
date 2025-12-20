@@ -39,7 +39,7 @@ module base64_icesugarpro_top (
 	output bg,
 	output vma,
 	output e,
-	output reset,
+	inout  reset,
 	output [2:0] fc,
 	// Autoconfig signals (shouldn't need these since we can autoconfig
 	// in-FPGA resources before running autoconfig cycles on the motherboard.)
@@ -94,34 +94,20 @@ wire [15:0] sdram_data;
 assign sdram_dq = sdram_drive_dq ? sdram_data : 16'bzzzzzzzz_zzzzzzzz;
 
 
-// Clocking - derive a fast internal clock from the incoming 14MHz clock.
-// (Will be synchronous to the motherboard clock - could use the incoming 25MHz clock
-// to create an asynchronous clock if we have any trouble with this.)
-
-wire sysclk;
-wire pll_locked;
-clocks clocks (
-	.CLKI(clk2x),
-	.CLKOP(sysclk),
-	.CLKOS(sdram_clk),
-	.LOCK(pll_locked)
+// Clocking
+m68k_clocks clocks;
+hostclocks hostclocks (
+	.clk7(clk),
+	.clk2x(clk2x),
+	.fpgaclk(clk_i),
+	.cpu_clocks(clocks)
 );
-
-// Supervisor clock, derived from the incoming 25MHz clk
-wire svclk;
-wire svlocked;
-supervisorclk svclocks (
-	.CLKI(clk_i),
-	.CLKOP(svclk),
-	.CLKOS(),
-	.CLKOS2(),
-	.LOCK(svlocked)
-);
+assign sdram_clk=clocks.ramclk;
+assign e = clocks.e;
 
 
 // ToDo - run a frequency counter on the incoming 25MHz clock to check that the generated
 // sysclock is within acceptable bounds.
-
 
 
 // Address / control bus
@@ -132,9 +118,9 @@ assign as = address.as;
 assign rw = address.rw;
 assign uds = address.uds;
 assign lds = address.lds;
-assign a_hi_oe = ~address.en;	// Active low
-assign a_md_oe = ~address.en;
-assign a_lo_oe = ~address.en;
+assign a_hi_oe = ~address.a_en;	// Active low
+assign a_md_oe = ~address.a_en;
+assign a_lo_oe = ~address.a_en;
 
 
 // Data bus
@@ -143,8 +129,8 @@ m68k_data_out data_out;
 m68k_data_in data_in;
 assign d = data_out.drive ? data_out.q : 16'bzzzzzzzz_zzzzzzzz ;
 assign data_in.d = d;
-assign d_hi_oe = ~data_out.en;	// Active low
-assign d_lo_oe = ~data_out.en;
+assign d_hi_oe = ~data_out.dq_en;	// Active low
+assign d_lo_oe = ~data_out.dq_en;
 
 
 // Misc inputs 
@@ -158,16 +144,18 @@ assign misc_in.vpa = vpa;
 assign misc_in.br = br;
 assign misc_in.bgack = bgack;
 assign misc_in.berr = berr;
+assign misc_in.reset = reset;
 
 
 // Misc outputs
 
 m68k_misc_out misc_out;
-assign e = misc_out.e;
-assign reset = misc_out.reset;
 assign fc = misc_out.fc;
 assign vma = misc_out.vma;
 assign bg = misc_out.bg;
+
+// Reset is bidirectional - tristate if not driven low
+assign reset = misc_out.reset ? 1'bz : 1'b0;
 
 
 // SDRAM
@@ -189,9 +177,7 @@ assign sdram_cke = sdr_out.cke;
 // Instantiate the project
 
 virtualtoplevel project (
-	.sysclk(sysclk),
-	.svclk(svclk),
-	.reset_n(pll_locked),
+	.clocks(clocks),
 	// M68K bus
 	.socket_addr_ctrl(address), 
 	.socket_din(data_in),

@@ -2,9 +2,7 @@ import sdram_pkg::*;
 import base64_m68k_pkg::*;
 
 module virtualtoplevel (
-	input sysclk,	// System clock, derived from doubled CPU clock
-	input svclk,	// Supervisor clock
-	input reset_n,
+	input  m68k_clocks       clocks,
 	
 	// m68k socket
 	output m68k_address_ctrl socket_addr_ctrl,
@@ -32,16 +30,16 @@ module virtualtoplevel (
 assign sdr_out.cs=1'b1;
 assign sdr_out.cke=1'b0;
 
-assign socket_dout.en=1'b0;
+assign socket_dout.dq_en=1'b0;
 assign socket_dout.drive=1'b0;
 
 reg [23:1] actr;
-always @(posedge svclk) begin
+always @(posedge clocks.svclk) begin
 	actr<=actr+1;
 	socket_addr_ctrl.a<=actr;
 end
 
-assign socket_addr_ctrl.en=1'b1;
+assign socket_addr_ctrl.a_en=1'b1;
 assign socket_addr_ctrl.as = actr[16];
 assign socket_addr_ctrl.rw = actr[17];
 assign socket_addr_ctrl.uds = actr[18];
@@ -51,7 +49,7 @@ assign socket_addr_ctrl.lds = actr[19];
 assign led_red = actr[23];
 
 reg [23:1] sctr;
-always @(posedge sysclk) begin
+always @(posedge clocks.sysclk) begin
 	sctr<=sctr+1;
 end
 assign led_green = sctr[23];

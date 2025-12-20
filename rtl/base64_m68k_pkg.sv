@@ -6,13 +6,13 @@ package base64_m68k_pkg;
 		bit lds;
 		bit uds;
 		bit rw;
-		bit oe;
+		bit en;
 	} m68k_address_ctrl;
 	
 	typedef struct packed {
 		bit [15:0] q;
 		bit drive;
-		bit oe;
+		bit en;
 	} m68k_data_out;
 	
 	typedef struct packed {
@@ -20,6 +20,7 @@ package base64_m68k_pkg;
 	} m68k_data_in;
 	
 	typedef struct packed {
+		bit clk;
 		bit dtack;
 		bit vpa;
 		bit halt;

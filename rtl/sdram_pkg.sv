@@ -7,7 +7,7 @@ typedef struct packed {
 } sdram_in;
 
 typedef struct packed {
-	bit [SDRAM_ADDRESS_WIDTH-1:0] a;
+	bit [SDRAM_ROW_BITS-1:0] a;
 	bit [1:0] ba;
 	bit cs;
 	bit ras;

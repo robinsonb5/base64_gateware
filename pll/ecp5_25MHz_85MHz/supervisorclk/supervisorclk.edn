@@ -1,12 +1,12 @@
-(edif clocks
+(edif supervisorclk
   (edifVersion 2 0 0)
   (edifLevel 0)
   (keywordMap (keywordLevel 0))
   (status
     (written
-      (timestamp 2025 12 20 10 28 32)
+      (timestamp 2025 12 20 11 38 5)
       (program "SCUBA" (version "Diamond (64-bit) 3.11.0.396.4"))))
-      (comment "/opt/diamond/3.11_x64/ispfpga/bin/lin64/scuba -w -n clocks -lang verilog -synth synplify -bus_exp 7 -bb -arch sa5p00 -type pll -fin 14.18 -fclkop 85.08 -fclkop_tol 0.0 -fclkos 85.08 -fclkos_tol 0.0 -phases 180 -phase_cntl STATIC -lock -fb_mode 1 -fdc /home/amr/FPGA/Base64/base64_gateware/pll/ecp5_14MHz_85MHz/clocks/clocks.fdc ")
+      (comment "/opt/diamond/3.11_x64/ispfpga/bin/lin64/scuba -w -n supervisorclk -lang verilog -synth synplify -bus_exp 7 -bb -arch sa5p00 -type pll -fin 25 -fclkop 100 -fclkop_tol 5.0 -fclkos 100.00 -fclkos_tol 5.0 -phases 180 -fclkos2 50 -fclkos2_tol 5.0 -phases2 0 -phase_cntl STATIC -lock -fb_mode 1 -fdc /home/amr/FPGA/Base64/base64_gateware/pll/ecp5_25MHz_85MHz/supervisorclk/supervisorclk.fdc ")
   (library ORCLIB
     (edifLevel 0)
     (technology
@@ -74,7 +74,7 @@
         (interface
           (port Z
             (direction OUTPUT)))))
-    (cell clocks
+    (cell supervisorclk
       (cellType GENERIC)
       (view view1
         (viewType NETLIST)
@@ -84,6 +84,8 @@
           (port CLKOP
             (direction OUTPUT))
           (port CLKOS
+            (direction OUTPUT))
+          (port CLKOS2
             (direction OUTPUT))
           (port LOCK
             (direction OUTPUT)))
@@ -113,15 +115,15 @@
             (property CLKOS2_FPHASE
               (string "0"))
             (property CLKOS2_CPHASE
-              (string "0"))
+              (string "11"))
             (property CLKOS_FPHASE
-              (string "4"))
+              (string "0"))
             (property CLKOS_CPHASE
-              (string "9"))
+              (string "8"))
             (property CLKOP_FPHASE
               (string "0"))
             (property CLKOP_CPHASE
-              (string "6"))
+              (string "5"))
             (property PLL_LOCK_MODE
               (string "0"))
             (property CLKOS_TRIM_DELAY
@@ -136,24 +138,26 @@
               (string "DIVD"))
             (property CLKOS3_ENABLE
               (string "DISABLED"))
+            (property FREQUENCY_PIN_CLKOS2
+              (string "50.000000"))
             (property OUTDIVIDER_MUXC
               (string "DIVC"))
             (property CLKOS2_ENABLE
-              (string "DISABLED"))
+              (string "ENABLED"))
             (property FREQUENCY_PIN_CLKOS
-              (string "85.080000"))
+              (string "100.000000"))
             (property OUTDIVIDER_MUXB
               (string "DIVB"))
             (property CLKOS_ENABLE
               (string "ENABLED"))
             (property FREQUENCY_PIN_CLKOP
-              (string "85.080000"))
+              (string "100.000000"))
             (property OUTDIVIDER_MUXA
               (string "DIVA"))
             (property CLKOP_ENABLE
               (string "ENABLED"))
             (property FREQUENCY_PIN_CLKI
-              (string "14.180000"))
+              (string "25.000000"))
             (property ICP_CURRENT
               (string "5"))
             (property LPF_RESISTOR
@@ -161,13 +165,13 @@
             (property CLKOS3_DIV
               (string "1"))
             (property CLKOS2_DIV
-              (string "1"))
+              (string "12"))
             (property CLKOS_DIV
-              (string "7"))
-            (property CLKOP_DIV
-              (string "7"))
-            (property CLKFB_DIV
               (string "6"))
+            (property CLKOP_DIV
+              (string "6"))
+            (property CLKFB_DIV
+              (string "4"))
             (property CLKI_DIV
               (string "1"))
             (property FEEDBK_PATH
@@ -197,6 +201,10 @@
             (joined
               (portRef LOCK)
               (portRef LOCK (instanceRef PLLInst_0))))
+          (net CLKOS2
+            (joined
+              (portRef CLKOS2)
+              (portRef CLKOS2 (instanceRef PLLInst_0))))
           (net CLKOS
             (joined
               (portRef CLKOS)
@@ -210,7 +218,7 @@
             (joined
               (portRef CLKI)
               (portRef CLKI (instanceRef PLLInst_0))))))))
-  (design clocks
-    (cellRef clocks
+  (design supervisorclk
+    (cellRef supervisorclk
       (libraryRef ORCLIB)))
 )

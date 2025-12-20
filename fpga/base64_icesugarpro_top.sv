@@ -1,0 +1,165 @@
+import base64_m68k_pkg::*;
+import sdram_pkg::*;
+
+module base64_icesugarpro_top (
+	input clk_i,
+	
+	// 7MHz and 14MHz clocks
+	input clk,
+	input clk2x,
+		
+	// Address bus
+	output a_hi_oe, // Covers a[23:18], rw, lds, uds & as
+	output a_md_oe, // Covers a[27:8]
+	output a_lo_oe, // Covers a[7:1]
+	output [23:1] a,
+	output rw,
+	output lds,
+	output uds,
+	output as,
+
+	// Data bus
+	output d_lo_oe,
+	output d_hi_oe,
+	inout [15:0] d,
+
+	// Other inputs
+	input bgack,
+	input br,
+	input dtack,
+	input vpa,
+	input halt,
+	input berr,
+	input [2:0] ipl,
+	
+	// Other outputs
+	output bg,
+	output vma,
+	output e,
+	output reset,
+	output [2:0] fc,
+	// Autoconfig signals (shouldn't need these since we can autoconfig
+	// in-FPGA resources before running autoconfig cycles on the motherboard.)
+
+	input cfgin,
+	output cfgout,
+	
+	// LEDs
+	
+	output led_red,
+	output led_green,
+	output led_blue,
+
+	// SDRAM signals
+	
+	output sdram_clk,
+	output sdram_cs_n,
+	output [12:0] sdram_a,
+	inout [15:0] sdram_dq,
+	output sdram_we_n,
+	output sdram_ras_n,
+	output sdram_cas_n,
+	output sdram_cke,
+	output [1:0] sdram_ba,
+	output [1:0] sdram_dm,
+	
+	// SD Card
+	output sd_clk,	// SPI Clk
+	output sd_cmd,	// SPI COPI
+	inout sd_d0,	// SPI CIPO
+	inout sd_d1,
+	inout sd_d2,
+	inout sd_d3	// SPI CS
+);
+
+
+// SD Card
+wire spi_clk;
+wire spi_copi;
+wire spi_cipo;
+wire spi_cs;
+assign sd_clk = spi_clk;
+assign sd_clk = spi_copi;
+assign sd_d3 = spi_cs;
+assign spi_cipo = sd_d0;
+
+
+// SDRAM
+wire sdram_drive_dq;
+wire [15:0] sdram_data;
+assign sdram_dq = sdram_drive_dq ? sdram_data : 16'bzzzzzzzz_zzzzzzzz;
+
+
+// Clocking - derive a fast internal clock from the incoming 14MHz clock.
+// (Will be synchronous to the motherboard clock - could use the incoming 25MHz clock
+// to create an asynchronous clock if we have any trouble with this.)
+
+wire sysclk;
+
+clocks clocks (
+	.CLKI(clk2x),
+	.CLKOP(sysclk),
+	.CLKOS(sdram_clk)
+);
+
+
+// Address / control bus
+
+m68k_address_ctrl address;
+assign a = address.a;
+assign as = address.as;
+assign rw = address.rw;
+assign uds = address.uds;
+assign lds = address.lds;
+assign a_hi_oe = ~address.oe;	// Active low
+assign a_md_oe = ~address.oe;
+assign a_lo_oe = ~address.oe;
+
+
+// Data bus
+
+m68k_data_out data_out;
+m68k_data_in data_in;
+assign d = data_out.drive ? data_out.q : 16'bzzzzzzzz_zzzzzzzz ;
+assign data_in.d = d;
+assign d_hi_oe = ~data_out.oe;	// Active low
+assign d_lo_oe = ~data_out.oe;
+
+
+// Misc inputs 
+
+m68k_misc_in misc_in;
+assign misc_in.dtack = dtack;
+assign misc_in.ipl = ipl;
+assign misc_in.halt = halt;
+assign misc_in.vpa = vpa;
+assign misc_in.br = br;
+assign misc_in.bgack = bgack;
+assign misc_in.berr = berr;
+
+
+// Misc outputs
+
+m68k_misc_out misc_out;
+assign e = misc_out.e;
+assign reset = misc_out.reset;
+assign fc = misc_out.fc;
+assign vma = misc_out.vma;
+assign bg = misc_out.bg;
+
+// SDRAM
+sdram_in sdr_in;
+assign sdr_in.d = sdram_d;
+
+sdram_out sdr_out;
+assign sdram_d = sdr_out.drive ? sdr_out.q : 16'bzzzz_zzzz_zzzz_zzzz;
+assign sdram_cas_n = sdr_out.cas;
+assign sdram_ras_n = sdr_out.ras;
+assign sdram_we_n = sdr_out.we;
+assign sdram_cs_n = sdr_out.cs;
+assign sdram_dqm = sdr_out.dqm;
+assign sdram_a = sdr_out.a;
+assign sdram_ba = sdr_out.ba;
+assign sdram_cke = sdr_out.cke;
+
+endmodule

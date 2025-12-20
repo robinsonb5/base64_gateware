@@ -1,0 +1,26 @@
+SCUBA, Version Diamond (64-bit) 3.11.0.396.4
+Fri Dec 19 21:03:01 2025
+
+Copyright (c) 1991-1994 by NeoCAD Inc. All rights reserved.
+Copyright (c) 1995 AT&T Corp.   All rights reserved.
+Copyright (c) 1995-2001 Lucent Technologies Inc.  All rights reserved.
+Copyright (c) 2001 Agere Systems   All rights reserved.
+Copyright (c) 2002-2019 Lattice Semiconductor Corporation,  All rights reserved.
+
+    Issued command   : /opt/diamond/3.11_x64/ispfpga/bin/lin64/scuba -w -n clocks -lang verilog -synth synplify -bus_exp 7 -bb -arch sa5p00 -type pll -fin 14.18 -fclkop 85.08 -fclkop_tol 0.0 -fclkos 85.08 -fclkos_tol 0.0 -phases 180 -phase_cntl STATIC -fb_mode 1 -fdc /home/amr/FPGA/Base64/base64_gateware/pll/ecp5_14MHz_85MHz/clocks/clocks.fdc 
+    Circuit name     : clocks
+    Module type      : pll
+    Module Version   : 5.7
+    Ports            : 
+	Inputs       : CLKI
+	Outputs      : CLKOP, CLKOS
+    I/O buffer       : not inserted
+    EDIF output      : clocks.edn
+    Verilog output   : clocks.v
+    Verilog template : clocks_tmpl.v
+    Verilog purpose  : for synthesis and simulation
+    Bus notation     : big endian
+    Report output    : clocks.srp
+    Element Usage    :
+        EHXPLLL : 1
+    Estimated Resource Usage:

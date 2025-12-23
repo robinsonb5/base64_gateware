@@ -1,0 +1,8 @@
+# Copy this file to site.mk and edit the paths below so the project makefiles can find 
+# the requisite tools. (Lattice Diamond, version 3.11 recommended, Verilator, etc.)
+
+DIAMOND_PATH = /opt/diamond/3.11/bin/lin64/
+
+VERILATOR_DIR=/usr/share/verilator/include
+
+

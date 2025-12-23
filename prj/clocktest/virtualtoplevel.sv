@@ -44,7 +44,7 @@ assign socket_addr_ctrl.lds = 1'b1;
 wire [31:0] jtag_d;
 wire [31:0] jtag_q;
 wire jtag_update;
-jcapture capture_inst (
+jcapture #(.id(16'hc10c)) capture_inst (
 	.clk(clocks.svclk),
 	.reset_n(1'b1), // clocks.reset_n_sys),
 	.d(jtag_d),

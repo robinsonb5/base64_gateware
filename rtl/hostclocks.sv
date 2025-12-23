@@ -24,6 +24,7 @@ clocks clocks (
 	.CLKOS(ramclk),
 	.LOCK(pll_locked)
 );
+
 assign cpu_clocks.sysclk = sysclk;
 assign cpu_clocks.ramclk = ramclk;
 
@@ -75,6 +76,8 @@ always @(posedge sysclk)
 reg [3:0] clk7_ctr;
 reg [3:0] edge_ctr;
 reg clk7_edge;
+reg clk7_en_p;
+reg clk7_en_n;
 always @(posedge sysclk) begin
 	clk7_ctr <= clk7_ctr + 1;
 	edge_ctr <= edge_ctr - 1;
@@ -84,28 +87,31 @@ always @(posedge sysclk) begin
 		clk7_edge <= clk7_s[2];
 	end
 	
-	cpu_clocks.clk7_en_p <= 1'b0;
-	cpu_clocks.clk7_en_n <= 1'b0;
+	clk7_en_p <= 1'b0;
+	clk7_en_n <= 1'b0;
 	if(edge_ctr == phase)
-		{cpu_clocks.clk7_en_p,cpu_clocks.clk7_en_n} <= {clk7_edge,~clk7_edge};
+		{clk7_en_p,clk7_en_n} <= {clk7_edge,~clk7_edge};
 end
-
+assign cpu_clocks.clk7_en_p = clk7_en_p;
+assign cpu_clocks.clk7_en_n = clk7_en_n;
 assign cpu_clocks.clk7 = clk7;
 
 // Generate a E clock
 reg [3:0] e_ctr;
+reg e;
 always @(posedge sysclk) begin
 	if(cpu_clocks.clk7_en_n) begin	// Transition on falling edge of clk7
 		e_ctr<=e_ctr-1;
-		if(!e_ctr) begin
+		if(e_ctr==4'd0) begin
 			e_ctr<=4'd9;
-			cpu_clocks.e<=1'b1;
+			e<=1'b1;
 		end
 		if(e_ctr==4'd6) begin
-			cpu_clocks.e<=1'b0;
+			e<=1'b0;
 		end
 	end
 end
+assign cpu_clocks.e=e;
 
 endmodule
 

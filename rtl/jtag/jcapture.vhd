@@ -34,6 +34,9 @@ use work.debug_jtag_plumbing.all;
 -- Edge: For bits set in both Edge and Mask, the trigger will match on falling edges, unless the corresponding invert bit is set.
 
 entity jcapture is
+generic(
+	id : std_logic_vector(15 downto 0) := X"35AC"
+);
 port(
 	clk : in std_logic;
 	reset_n : in std_logic;
@@ -48,9 +51,10 @@ end entity;
 architecture rtl of jcapture is
 
 	-- JTAG signals
+	constant virsize : integer := 32; -- Large enough to accommodate a 16-bit ID as well as the status bits.
 	signal vir_update : std_logic;
-	signal vir_from_jtag : std_logic_vector(jcapture_irsize-1 downto 0);
-	signal vir_to_jtag : std_logic_vector(jcapture_irsize-1 downto 0);
+	signal vir_from_jtag : std_logic_vector(virsize-1 downto 0);
+	signal vir_to_jtag : std_logic_vector(virsize-1 downto 0);
 	signal vdr_update : std_logic; -- Synced to sysclk, so will arrive a couple of cycles after the data has been updated;
 	signal vdr_from_jtag : std_logic_vector(jcapture_width-1 downto 0);
 
@@ -97,7 +101,7 @@ begin
 			edge <= (others => '0');
 		elsif rising_edge(clk) then
 			if vdr_update='1' then
-				case vir_from_jtag is
+				case vir_from_jtag(3 downto 0) is
 					when jcapture_ir_setmask =>
 						mask <= vdr_from_jtag(jcapture_triggerwidth-1 downto 0);
 					when jcapture_ir_setinvert =>
@@ -141,7 +145,7 @@ begin
 		elsif rising_edge(clk) then
 			update<='0';
 			if vdr_update='1' then
-				case vir_from_jtag is
+				case vir_from_jtag(3 downto 0) is
 					when jcapture_ir_write =>
 						q <= vdr_from_jtag;
 						update <= '1';					
@@ -179,7 +183,7 @@ begin
 			end case;
 			
 			if vir_update='1' then
-				case vir_from_jtag is				
+				case vir_from_jtag(3 downto 0) is				
 					when jcapture_ir_capture =>
 						capstate <= STATE_CAPTURE;
 					when jcapture_ir_abort =>
@@ -204,8 +208,9 @@ begin
 	busy <= '0' when capstate=STATE_IDLE else '1';
 	capturing <= '1' when capstate=STATE_CAPTURE else '0';
 
-	vir_to_jtag<=(3=>capturing,2=>fifo_empty,1=>fifo_full,0=>busy,others=>'0');
-
+	vir_to_jtag(15 downto 0) <=(3=>capturing,2=>fifo_empty,1=>fifo_full,0=>busy,others=>'0');
+	vir_to_jtag(31 downto 16) <= id;
+	
 end block;
 
 
@@ -250,7 +255,7 @@ begin
 
 	virtual_ir : entity work.vjtag_register
 	generic map (
-		bits => jcapture_irsize
+		bits => virsize
 	)
 	port map (
 		from_jtag => to_regs(0),

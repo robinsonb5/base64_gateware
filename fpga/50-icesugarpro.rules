@@ -1,0 +1,4 @@
+# udev rule for icesugarpro
+SUBSYSTEM=="hidraw", ATTRS{interface}=="CMSIS-DAP*", MODE="0660", GROUP="plugdev"
+
+

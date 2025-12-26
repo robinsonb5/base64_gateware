@@ -1,4 +1,3 @@
-CXX=g++-10
 OBJ_DIR=obj_dir
 IMPL_DIR=impl1
 

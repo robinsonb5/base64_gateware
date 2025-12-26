@@ -45,7 +45,7 @@ int main(int argc, char **argv) {
 	// Create an instance of our module under test
 	tb = new Vtb;
 	tb->trace(trace, 99);
-	trace->open("trace.vcd");
+	trace->open("sim.vcd");
 
 	for(int i=0;i<100;++i) {
 		tick(1);

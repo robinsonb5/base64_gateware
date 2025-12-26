@@ -17,7 +17,7 @@ hostclocks hostclocks (
 	.fpgaclk(clk2x),
 	.cpu_clocks(clocks)
 );
-assign e = clocks.e;
+assign e = clocks.e_internal;
 assign clocks.sysclk=sysclk;
 assign clocks.svclk=svclk;
 /* verilator lint_on MULTIDRIVEN */

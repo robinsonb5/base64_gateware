@@ -1,5 +1,6 @@
 import sdram_pkg::*;
 import base64_m68k_pkg::*;
+import cpu_pkg::*;
 
 module virtualtoplevel (
 	input m68k_clocks        clocks,
@@ -30,14 +31,38 @@ module virtualtoplevel (
 assign sdr_out.cs=1'b1;
 assign sdr_out.cke=1'b0;
 
-assign socket_dout.dq_en=1'b0;
-assign socket_dout.drive=1'b0;
+cpu_request cpu_req;
+cpu_response cpu_resp;
 
-assign socket_addr_ctrl.a_en=1'b0;
-assign socket_addr_ctrl.as = 1'b1;
-assign socket_addr_ctrl.rw = 1'b1;
-assign socket_addr_ctrl.uds = 1'b1;
-assign socket_addr_ctrl.lds = 1'b1;
+
+reg [15:0] rgb=0;
+always @(posedge clocks.sysclk) begin
+	cpu_req.addr <= 32'h00dff180;
+	cpu_req.dm=2'b11;
+	if(!clocks.reset_n_sys) begin
+		cpu_req.req<=1'b0;
+		rgb<=0;
+	end else begin
+		if(cpu_resp.ack==cpu_req.req) begin
+			cpu_req.d<=rgb;
+			cpu_req.wr<=1'b1;
+			cpu_req.req<=~cpu_resp.ack;
+			rgb <= rgb+1;
+		end
+	end
+end
+
+
+m68k_bridge bridge (
+	.clks(clocks),
+	.m_addr(socket_addr_ctrl),
+	.m_data_out(socket_dout),
+	.m_data_in(socket_din),
+	.m_misc_in(socket_miscin),
+	.m_misc_out(socket_miscout),
+	.cpu_req(cpu_req),
+	.cpu_resp(cpu_resp)
+);
 
 
 // JTAG capture module to monitor the clock lines
@@ -54,8 +79,15 @@ jcapture #(.id(16'hc10c)) capture_inst (
 
 assign jtag_d[0] = clocks.clk7;
 assign jtag_d[2:1] = {clocks.clk7_en_p,clocks.clk7_en_n};
-assign jtag_d[3] = clocks.e_internal;
-assign jtag_d[31:4] = 28'b0;
+assign jtag_d[3] = socket_miscout.e;
+assign jtag_d[4] = socket_addr_ctrl.as;
+assign jtag_d[5] = socket_addr_ctrl.uds;
+assign jtag_d[6] = socket_addr_ctrl.lds;
+assign jtag_d[7] = socket_addr_ctrl.rw;
+assign jtag_d[8] = socket_miscin.dtack;
+assign jtag_d[24:9] = socket_dout.q;
+
+assign jtag_d[31:25] = 7'b0;
 
 reg ledr;
 always @(posedge clocks.svclk) begin

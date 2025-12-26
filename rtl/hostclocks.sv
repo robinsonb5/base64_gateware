@@ -100,7 +100,7 @@ assign cpu_clocks.clk7 = clk7;
 reg [3:0] e_ctr;
 reg e;
 always @(posedge sysclk) begin
-	if(cpu_clocks.clk7_en_n) begin	// Transition on falling edge of clk7
+	if(edge_ctr==phase && ~clk7_edge) begin	// Transition on falling edge of clk7
 		e_ctr<=e_ctr-1;
 		if(e_ctr==4'd0) begin
 			e_ctr<=4'd9;
@@ -111,7 +111,7 @@ always @(posedge sysclk) begin
 		end
 	end
 end
-assign cpu_clocks.e=e;
+assign cpu_clocks.e_internal=e;
 
 endmodule
 

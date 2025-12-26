@@ -15,7 +15,7 @@ module base64_icesugarpro_top (
 	output a_hi_oe, // Covers a[23:18], rw, lds, uds & as
 	output a_md_oe, // Covers a[27:8]
 	output a_lo_oe, // Covers a[7:1]
-	output [23:1] a,
+	inout [23:1] a,
 	output rw,
 	output lds,
 	output uds,
@@ -41,7 +41,8 @@ module base64_icesugarpro_top (
 	output e,
 	inout  reset,
 	output [2:0] fc,
-	// Autoconfig signals (shouldn't need these since we can autoconfig
+
+	// Autoconfig signals (shouldn't need these since we can autoconfig
 	// in-FPGA resources before running autoconfig cycles on the motherboard.)
 
 	input  cfgin,
@@ -103,7 +104,7 @@ hostclocks hostclocks (
 	.cpu_clocks(clocks)
 );
 assign sdram_clk=clocks.ramclk;
-assign e = clocks.e;
+assign e = misc_out.e;
 
 
 // ToDo - run a frequency counter on the incoming 25MHz clock to check that the generated
@@ -113,7 +114,7 @@ assign e = clocks.e;
 // Address / control bus
 
 m68k_address_ctrl address;
-assign a = address.a;
+assign a = address.drive ? address.a : 23'bzzzzzzz_zzzzzzzz_zzzzzzzz;
 assign as = address.as;
 assign rw = address.rw;
 assign uds = address.uds;

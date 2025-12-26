@@ -6,6 +6,7 @@ package base64_m68k_pkg;
 		bit lds;
 		bit uds;
 		bit rw;
+		bit drive;
 		bit a_en;
 	} m68k_address_ctrl;
 	
@@ -33,6 +34,7 @@ package base64_m68k_pkg;
 	
 	typedef struct packed {
 		bit vma;
+		bit e;
 		bit reset;	// Bi-directional
 		bit [2:0] fc;
 		bit bg;
@@ -43,7 +45,7 @@ package base64_m68k_pkg;
 		bit clk7;      // Unprocessed clk7 (for diagnostics only)
 		bit clk7_en_p;	// Strobe to mark posedge of motherboard clock
 		bit clk7_en_n;	// Strobe to mark negedge of motherboard clock
-		bit e;			// E clock - period of 10 7MHz clocks - 6 cycles low, 4 cycles high.
+		bit e_internal;	// E clock - period of 10 7MHz clocks - 6 cycles low, 4 cycles high.
 		bit ramclk;		// Phase shifted version of sysclk for SDRAM
 		bit svclk;		// Supervisor clock, derived from FPGA board's own clock, async to motherboard
 		bit reset_n_sys;// Active low reset derived from PLL lock signals

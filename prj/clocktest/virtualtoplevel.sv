@@ -64,10 +64,10 @@ always @(posedge clocks.svclk) begin
 end
 assign led_red = ledr;
 
-reg [23:1] sctr;
+reg [25:1] sctr;
 always @(posedge clocks.sysclk) begin
 	sctr<=sctr+1;
 end
-assign led_green = sctr[21];
+assign led_green = sctr[25];
 	
 endmodule

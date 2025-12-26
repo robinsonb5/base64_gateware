@@ -9,8 +9,8 @@ scan_chain
 # The total number of bits here must match the width defined in jcapture_pkg.vhd
 set capture_fields {
 	{ clk7 1 }
-	{ clk7_en_p 1 }
 	{ clk7_en_n 1 }
+	{ clk7_en_p 1 }
 	{ e 1 }
 	{ pad 28 }
 }

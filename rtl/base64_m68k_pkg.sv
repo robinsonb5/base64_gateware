@@ -1,6 +1,6 @@
 package base64_m68k_pkg;
 
-	typedef struct packed {
+	typedef struct {
 		bit [23:1] a;
 		bit as;
 		bit lds;
@@ -10,17 +10,17 @@ package base64_m68k_pkg;
 		bit a_en;
 	} m68k_address_ctrl;
 	
-	typedef struct packed {
+	typedef struct {
 		bit [15:0] q;
 		bit drive;
 		bit dq_en;
 	} m68k_data_out;
 	
-	typedef struct packed {
+	typedef struct {
 		bit [15:0] d;
 	} m68k_data_in;
 	
-	typedef struct packed {
+	typedef struct {
 		bit clk;
 		bit dtack;
 		bit vpa;
@@ -32,7 +32,7 @@ package base64_m68k_pkg;
 		bit bgack;
 	} m68k_misc_in;
 	
-	typedef struct packed {
+	typedef struct {
 		bit vma;
 		bit e;
 		bit reset;	// Bi-directional
@@ -40,7 +40,7 @@ package base64_m68k_pkg;
 		bit bg;
 	} m68k_misc_out;
 
-	typedef struct packed {
+	typedef struct {
 		bit sysclk;		// High frequency system clock, integer multiple of doubled motherboard clock
 		bit clk7;      // Unprocessed clk7 (for diagnostics only)
 		bit clk7_en_p;	// Strobe to mark posedge of motherboard clock

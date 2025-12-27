@@ -40,7 +40,7 @@ always @(posedge clks.sysclk) begin
 				// The read cycle starts in state 0 (S0). The processor places valid function
 				// codes on FC0–FC2 and drives R/W high to identify a read cycle.
 				if(clks.clk7_en_p && (cpu_req.req!=cpu_resp.ack)) begin
-					m_misc_out.fc={cpu_req.supervisor,cpu_req.ifetch,~cpu_req.ifetch};
+					m_misc_out.fc<={cpu_req.supervisor,cpu_req.ifetch,~cpu_req.ifetch};
 					m_addr.rw<= 1'b1;
 					m_addr.as<=1'b1;
 					m_addr.uds<=1'b1;
@@ -198,4 +198,4 @@ always @(posedge clks.sysclk) begin
 end
 
 
-endmodule;
+endmodule

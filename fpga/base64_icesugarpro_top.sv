@@ -104,7 +104,6 @@ hostclocks hostclocks (
 	.cpu_clocks(clocks)
 );
 assign sdram_clk=clocks.ramclk;
-assign e = misc_out.e;
 
 
 // ToDo - run a frequency counter on the incoming 25MHz clock to check that the generated
@@ -154,6 +153,8 @@ m68k_misc_out misc_out;
 assign fc = misc_out.fc;
 assign vma = misc_out.vma;
 assign bg = misc_out.bg;
+assign e = misc_out.e;
+
 
 // Reset is bidirectional - tristate if not driven low
 assign reset = misc_out.reset ? 1'bz : 1'b0;

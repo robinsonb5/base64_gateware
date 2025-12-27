@@ -5,6 +5,8 @@
 init
 scan_chain
 
+# 16-bit project ID, so we can be sure we're capturing from the correct design
+set projectid 0xc01a
 
 # The total number of bits here must match the width defined in jcapture_pkg.vhd
 set capture_fields {
@@ -17,6 +19,8 @@ set capture_fields {
 	{ lds 1 }
 	{ rw 1 }
 	{ dtack 1 }
+	{ vpa 1 }
+	{ vma 1 }
 	{ d 16 }
 	{ pad 7 }
 }
@@ -26,7 +30,7 @@ puts "Setting TAP, capture fields and length"
 set loc [file dirname [file normalize [info script]]]
 source ${loc}/../../rtl/jtag/jcapture.tcl
 
-set capture_length [::jcapture::setup target.tap $capture_fields 0xc10c]
+set capture_length [::jcapture::setup target.tap $capture_fields $projectid]
 
 puts "Recording to cap.vcd"
 

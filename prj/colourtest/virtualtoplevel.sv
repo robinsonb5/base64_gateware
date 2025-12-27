@@ -37,8 +37,8 @@ cpu_response cpu_resp;
 
 reg [15:0] rgb=0;
 always @(posedge clocks.sysclk) begin
-	cpu_req.addr <= 32'h00dff180;
-	cpu_req.dm=2'b11;
+	cpu_req.addr <= 32'hdff180;
+	cpu_req.dm<=2'b11;
 	if(!clocks.reset_n_sys) begin
 		cpu_req.req<=1'b0;
 		rgb<=0;
@@ -69,7 +69,7 @@ m68k_bridge bridge (
 wire [31:0] jtag_d;
 wire [31:0] jtag_q;
 wire jtag_update;
-jcapture #(.id(16'hc10c)) capture_inst (
+jcapture #(.id(16'hc01a)) capture_inst (
 	.clk(clocks.svclk),
 	.reset_n(1'b1), // clocks.reset_n_sys),
 	.d(jtag_d),
@@ -85,9 +85,11 @@ assign jtag_d[5] = socket_addr_ctrl.uds;
 assign jtag_d[6] = socket_addr_ctrl.lds;
 assign jtag_d[7] = socket_addr_ctrl.rw;
 assign jtag_d[8] = socket_miscin.dtack;
-assign jtag_d[24:9] = socket_dout.q;
+assign jtag_d[9] = socket_miscin.vpa;
+assign jtag_d[10] = socket_miscout.vma;
+assign jtag_d[26:11] = socket_dout.q;
 
-assign jtag_d[31:25] = 7'b0;
+assign jtag_d[31:27] = 5'b0;
 
 reg ledr;
 always @(posedge clocks.svclk) begin

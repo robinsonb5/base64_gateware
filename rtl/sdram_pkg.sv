@@ -2,11 +2,11 @@ package sdram_pkg;
 
 import board_pkg::*;
 
-typedef struct packed {
+typedef struct {
 	bit [SDRAM_DATA_WIDTH-1:0] d;
 } sdram_in;
 
-typedef struct packed {
+typedef struct {
 	bit [SDRAM_ROW_BITS-1:0] a;
 	bit [1:0] ba;
 	bit cs;

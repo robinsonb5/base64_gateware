@@ -40,7 +40,7 @@ package base64_m68k_pkg;
 		bit bg;
 	} m68k_misc_out;
 
-	typedef struct {
+	typedef struct packed {
 		bit sysclk;		// High frequency system clock, integer multiple of doubled motherboard clock
 		bit clk7;      // Unprocessed clk7 (for diagnostics only)
 		bit clk7_en_p;	// Strobe to mark posedge of motherboard clock

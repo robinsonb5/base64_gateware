@@ -35,21 +35,51 @@ cpu_request cpu_req;
 cpu_response cpu_resp;
 
 
+typedef enum logic[2:0] {
+    RESET,
+    READRMB,
+    WRITECOLOR0
+} state_t;
+
+state_t state;
+
+reg [15:0] btns2; // $dff016 - right and middle mouse buttons
 reg [15:0] rgb=0;
+
 always @(posedge clocks.sysclk) begin
-	cpu_req.addr <= 32'hdff180;
-	cpu_req.dm<=2'b11;
-	if(!clocks.reset_n_sys) begin
-		cpu_req.req<=1'b0;
-		rgb<=0;
-	end else begin
-		if(cpu_resp.ack==cpu_req.req) begin
-			cpu_req.d<=rgb;
-			cpu_req.wr<=1'b1;
-			cpu_req.req<=~cpu_resp.ack;
-			rgb <= rgb+1;
-		end
-	end
+    case (state)
+        RESET : begin
+    		cpu_req.req<=1'b0;
+    		rgb<=0;
+            state <= READRMB;
+        end
+        READRMB : begin
+            if(cpu_resp.ack == cpu_req.req) begin
+	            cpu_req.addr <= 32'hdff016;
+	            cpu_req.dm<=2'b11;
+                cpu_req.wr<=1'b0;
+			    cpu_req.req<=~cpu_resp.ack;
+                state <= WRITECOLOR0;
+            end
+        end
+        WRITECOLOR0 : begin
+		    if(cpu_resp.ack==cpu_req.req) begin
+                btns2<=cpu_resp.q;
+	            cpu_req.addr <= 32'hdff180;
+	            cpu_req.dm<=2'b11;
+			    cpu_req.d<=rgb ^ btns2;
+			    cpu_req.wr<=1'b1;
+			    cpu_req.req<=~cpu_resp.ack;
+			    rgb <= rgb+1;
+                state <= READRMB;
+		    end
+    	end
+        default : begin
+            state <= RESET;
+        end
+    endcase
+    if(!clocks.reset_n_sys)
+        state <= RESET;
 end
 
 
@@ -65,31 +95,20 @@ m68k_bridge bridge (
 );
 
 
-// JTAG capture module to monitor the clock lines
-wire [31:0] jtag_d;
-wire [31:0] jtag_q;
+// JTAG capture module to monitor the cpu
+wire [0:0] jtag_q;
 wire jtag_update;
-jcapture #(.id(16'hc01a)) capture_inst (
-	.clk(clocks.svclk),
-	.reset_n(1'b1), // clocks.reset_n_sys),
-	.d(jtag_d),
-	.q(jtag_q),
-	.update(jtag_update)
+cpu_probe #(.out_width(1)) probe (
+    .clocks(clocks),
+    .m_addr(socket_addr_ctrl),
+    .m_data_in(socket_din),
+    .m_data_out(socket_dout),
+    .m_misc_in(socket_miscin),
+    .m_misc_out(socket_miscout),
+    .extra(1'b0),
+    .update(jtag_update),
+    .q(jtag_q)
 );
-
-assign jtag_d[0] = clocks.clk7;
-assign jtag_d[2:1] = {clocks.clk7_en_p,clocks.clk7_en_n};
-assign jtag_d[3] = socket_miscout.e;
-assign jtag_d[4] = socket_addr_ctrl.as;
-assign jtag_d[5] = socket_addr_ctrl.uds;
-assign jtag_d[6] = socket_addr_ctrl.lds;
-assign jtag_d[7] = socket_addr_ctrl.rw;
-assign jtag_d[8] = socket_miscin.dtack;
-assign jtag_d[9] = socket_miscin.vpa;
-assign jtag_d[10] = socket_miscout.vma;
-assign jtag_d[26:11] = socket_dout.q;
-
-assign jtag_d[31:27] = 5'b0;
 
 reg ledr;
 always @(posedge clocks.svclk) begin

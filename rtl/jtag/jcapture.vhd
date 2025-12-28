@@ -35,14 +35,16 @@ use work.debug_jtag_plumbing.all;
 
 entity jcapture is
 generic(
+    capture_width : integer := 32;
+    capture_depth : integer := 7;
 	id : std_logic_vector(15 downto 0) := X"35AC"
 );
 port(
 	clk : in std_logic;
 	reset_n : in std_logic;
 	-- Design interface
-	d : in std_logic_vector(jcapture_width-1 downto 0);
-	q : buffer std_logic_vector(jcapture_width-1 downto 0); -- Optional output data
+	d : in std_logic_vector(capture_width-1 downto 0);
+	q : buffer std_logic_vector(capture_width-1 downto 0); -- Optional output data
 	update : out std_logic
 );	
 end entity;
@@ -56,11 +58,11 @@ architecture rtl of jcapture is
 	signal vir_from_jtag : std_logic_vector(virsize-1 downto 0);
 	signal vir_to_jtag : std_logic_vector(virsize-1 downto 0);
 	signal vdr_update : std_logic; -- Synced to sysclk, so will arrive a couple of cycles after the data has been updated;
-	signal vdr_from_jtag : std_logic_vector(jcapture_width-1 downto 0);
+	signal vdr_from_jtag : std_logic_vector(capture_width-1 downto 0);
 
 	-- FIFO signals
 	signal leadin : std_logic_vector(1 downto 0) := "00";
-	signal to_fifo : std_logic_vector(jcapture_width-1 downto 0);
+	signal to_fifo : std_logic_vector(capture_width-1 downto 0);
 	signal fifo_wr : std_logic;
 	signal fifo_full : std_logic;
 	signal fifo_empty : std_logic;
@@ -189,10 +191,10 @@ begin
 					when jcapture_ir_abort =>
 						capstate <= STATE_IDLE;
 					when jcapture_ir_capturewidth =>
-						to_fifo(15 downto 0)<=std_logic_vector(to_unsigned(jcapture_width,16));
+						to_fifo(15 downto 0)<=std_logic_vector(to_unsigned(capture_width,16));
 						fifo_wr<='1';
 					when jcapture_ir_capturedepth =>
-						to_fifo(15 downto 0)<=std_logic_vector(to_unsigned(jcapture_depth,16));
+						to_fifo(15 downto 0)<=std_logic_vector(to_unsigned(capture_depth,16));
 						fifo_wr<='1';
 					when jcapture_ir_triggerwidth =>
 						to_fifo(15 downto 0)<=std_logic_vector(to_unsigned(jcapture_triggerwidth,16));
@@ -221,8 +223,8 @@ jtag_glue : block
 
 	-- FIFO signals
 	signal frd_en,fwr_en,fempty,ffull : std_logic;
-	signal fwr : std_logic_vector(jcapture_width-1 downto 0);
-	signal frd : std_logic_vector(jcapture_width-1 downto 0);
+	signal fwr : std_logic_vector(capture_width-1 downto 0);
+	signal frd : std_logic_vector(capture_width-1 downto 0);
 	
 begin
 
@@ -234,8 +236,8 @@ begin
 
 	fifo : entity work.vjtag_fifo
 	generic map (
-		width => jcapture_width,
-		depth => jcapture_depth
+		width => capture_width,
+		depth => capture_depth
 	)
 	port map(
 		reset_n => reset_n,
@@ -269,7 +271,7 @@ begin
 
 	virtual_dr : entity work.vjtag_register
 	generic map (
-		bits => jcapture_width
+		bits => capture_width
 	)
 	port map (
 		from_jtag => to_regs(1),

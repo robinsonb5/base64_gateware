@@ -6,7 +6,7 @@ init
 scan_chain
 
 # 16-bit project ID, so we can be sure we're capturing from the correct design
-set projectid 0xc01a
+set projectid 0x680a
 
 # The total number of bits here must match the width defined in jcapture_pkg.vhd
 set capture_fields {
@@ -21,7 +21,9 @@ set capture_fields {
 	{ dtack 1 }
 	{ vpa 1 }
 	{ vma 1 }
-	{ d 16 }
+	{ q 16 }
+    { d 16 }
+    { a 24 }
 	{ pad 7 }
 }
 

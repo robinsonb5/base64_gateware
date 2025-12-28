@@ -5,9 +5,7 @@ package jcapture_pkg is
 
 	-- User constants
 
-	constant jcapture_width : integer := 256;
 	constant jcapture_triggerwidth : integer := 32;
-	constant jcapture_depth : integer := 7;
 
 	-- Internal constants
 

@@ -303,6 +303,7 @@ proc ::jcapture::create_vcd {filename {timezero 0}} {
 
 # Dump the FIFO contents to a previously-created VCD file
 proc ::jcapture::fifo_to_vcd { chan } {
+    puts "Dumping to VCD file"
 	set fields [llength $::jcapture::fields]
 
 	set vcdi 0

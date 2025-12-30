@@ -23,8 +23,12 @@ set capture_fields {
 	{ vma 1 }
 	{ q 16 }
     { d 16 }
+    { dq_en 1 }
+    { dq_drive 1 }
     { a 24 }
-	{ pad 7 }
+    { a_en 1 }
+    { a_drive 1 }
+	{ pad 1 }
 }
 
 puts "Setting TAP, capture fields and length"

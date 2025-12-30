@@ -22,7 +22,7 @@ module cpu_probe #(
 );
 
 // JTAG capture module to monitor the cpu bus lines
-localparam cpusignal_width = 67;
+localparam cpusignal_width = 71;
 localparam capture_width = cpusignal_width + extra_width;
 wire [capture_width-1:0] jtag_d;
 wire [capture_width-1:0] jtag_q;
@@ -32,8 +32,8 @@ jcapture #(
     .capture_depth(capture_depth),
     .id(id)
 ) capture_inst (
-	.clk(clocks.svclk),
-	.reset_n(1'b1), // clocks.reset_n_sys),
+	.clk(clocks.sysclk),
+	.reset_n(clocks.reset_n_sys), // clocks.reset_n_sys),
 	.d(jtag_d),
 	.q(jtag_q),
 	.update(jtag_update)
@@ -51,9 +51,13 @@ assign jtag_d[9] = m_misc_in.vpa;
 assign jtag_d[10] = m_misc_out.vma;
 assign jtag_d[26:11] = m_data_out.q;
 assign jtag_d[42:27] = m_data_in.d;
-assign jtag_d[66:43] = {m_addr.a,1'b0};
+assign jtag_d[43] = m_data_out.dq_en;
+assign jtag_d[44] = m_data_out.drive;
+assign jtag_d[68:45] = {m_addr.a,1'b0};
+assign jtag_d[69] = {m_addr.a_en};
+assign jtag_d[70] = {m_addr.drive};
 
-assign jtag_d[66+extra_width:67] = extra;
+assign jtag_d[70+extra_width:71] = extra;
 
 assign update = jtag_update;
 assign q = jtag_q[out_width-1:0];

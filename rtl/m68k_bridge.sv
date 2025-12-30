@@ -14,6 +14,7 @@ module m68k_bridge (
 
 typedef enum logic[3:0] {
 	RESET,
+	INIT,
 	S[0:7],
 	P[5:7]
 } m68k_state;
@@ -32,9 +33,18 @@ always @(posedge clks.sysclk) begin
 				m_data_out.dq_en<=1'b0;
 				m_data_out.drive<=1'b0;
 				m_misc_out.vma<=1'b1;
+				m_misc_out.bg<=1'b1;
+				m_misc_out.reset<=1'b0;
+				if(clks.clk7_en_p)
+					state <= INIT;
+			end
+		INIT: begin
+			if(clks.clk7_en_p) begin
+				m_misc_out.reset<=1'b1;
 				state <= S0;
 			end
-			
+		end
+		
 		S0: begin
 				// STATE 0 (posedge):
 				// The read cycle starts in state 0 (S0). The processor places valid function
@@ -117,7 +127,10 @@ always @(posedge clks.sysclk) begin
 					
 					end
 					if(m_misc_in.vpa==1'b0) begin
-						state <= P5;
+						if(!clks.e_internal && !m_misc_out.e) begin // E clock low
+							m_misc_out.vma <= 1'b0;
+							state <= P5;
+						end
 					end
 				end
 			end
@@ -155,14 +168,13 @@ always @(posedge clks.sysclk) begin
 			end
 		
 		P5: begin
-				if(!clks.e_internal && !m_misc_out.e) begin // E clock low
-					m_misc_out.vma <= 1'b0;
+				if(clks.e_internal && !m_misc_out.e) begin // E clock high
 					state <= P6;
 				end
 			end
 			
 		P6: begin
-				if(clks.e_internal && clks.clk7_en_p) begin
+				if(!clks.e_internal && clks.clk7_en_p) begin // Falling edge of E clock
 					cpu_resp.q <= m_data_in.d;
 					cpu_resp.ack <= cpu_req.req;
 					state <= P7;

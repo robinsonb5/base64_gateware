@@ -37,25 +37,62 @@ cpu_response cpu_resp;
 
 typedef enum logic[2:0] {
     RESET,
+    SETDDR,
+	SETPOTGO,
     READRMB,
-    WRITECOLOR0
+    READLMB,
+    WRITECOLOR0,   
+    WRITELED
 } state_t;
 
 state_t state;
 
+reg [7:0] btns1; // $bfe001 - left button.
 reg [15:0] btns2; // $dff016 - right and middle mouse buttons
 reg [15:0] rgb=0;
+
+reg[19:0] ledcounter;
 
 always @(posedge clocks.sysclk) begin
     case (state)
         RESET : begin
     		cpu_req.req<=1'b0;
     		rgb<=0;
-            state <= READRMB;
+            state <= SETDDR;
         end
+        SETDDR : begin
+            if(cpu_resp.ack == cpu_req.req) begin
+	            cpu_req.addr <= 32'hbfe201;
+	            cpu_req.dm<=2'b11;
+                cpu_req.wr<=1'b1;
+                cpu_req.d<=16'h3; // OVL and LED output, all other input.
+			    cpu_req.req<=~cpu_resp.ack;
+                state <= SETPOTGO;
+            end            
+        end
+		SETPOTGO : begin
+            if(cpu_resp.ack == cpu_req.req) begin
+	            cpu_req.addr <= 32'hdff034;
+	            cpu_req.dm<=2'b11;
+                cpu_req.wr<=1'b1;
+                cpu_req.d<=16'hff00; // Drive outputs high to use as button inputs
+			    cpu_req.req<=~cpu_resp.ack;
+                state <= READRMB;
+            end            
+		end
         READRMB : begin
             if(cpu_resp.ack == cpu_req.req) begin
-	            cpu_req.addr <= 32'hdff016;
+	            cpu_req.addr <= 32'hfc0004; // ROM
+	            cpu_req.dm<=2'b11;
+                cpu_req.wr<=1'b0;
+			    cpu_req.req<=~cpu_resp.ack;
+                state <= READLMB;
+            end
+        end
+        READLMB : begin
+            if(cpu_resp.ack == cpu_req.req) begin
+                btns2<=cpu_resp.q;
+	            cpu_req.addr <= 32'hbfe001;
 	            cpu_req.dm<=2'b11;
                 cpu_req.wr<=1'b0;
 			    cpu_req.req<=~cpu_resp.ack;
@@ -64,16 +101,27 @@ always @(posedge clocks.sysclk) begin
         end
         WRITECOLOR0 : begin
 		    if(cpu_resp.ack==cpu_req.req) begin
-                btns2<=cpu_resp.q;
+                btns1<=cpu_resp.q;
 	            cpu_req.addr <= 32'hdff180;
 	            cpu_req.dm<=2'b11;
-			    cpu_req.d<=rgb ^ btns2;
+			    cpu_req.d<=rgb ^ btns2 ^ btns1;
 			    cpu_req.wr<=1'b1;
 			    cpu_req.req<=~cpu_resp.ack;
-			    rgb <= rgb+1;
-                state <= READRMB;
+			    rgb <= rgb + {btns2[8],btns2[10],btns1[6],1'b1};
+                state <= WRITELED;
 		    end
     	end
+        WRITELED : begin
+            if(cpu_resp.ack == cpu_req.req) begin
+                ledcounter <= ledcounter + 1;
+	            cpu_req.addr <= 32'hbfe001;
+	            cpu_req.dm<=2'b11;
+                cpu_req.wr<=1'b1;
+                cpu_req.d<={ledcounter[19],1'b0}; // Keep OVL low, LED toggles.
+			    cpu_req.req<=~cpu_resp.ack;
+                state <= READRMB;
+            end            
+        end
         default : begin
             state <= RESET;
         end
@@ -81,7 +129,6 @@ always @(posedge clocks.sysclk) begin
     if(!clocks.reset_n_sys)
         state <= RESET;
 end
-
 
 m68k_bridge bridge (
 	.clks(clocks),

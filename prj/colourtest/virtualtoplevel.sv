@@ -101,13 +101,13 @@ always @(posedge clocks.sysclk) begin
         end
         WRITECOLOR0 : begin
 		    if(cpu_resp.ack==cpu_req.req) begin
-                btns1<=cpu_resp.q;
+                btns1<=cpu_resp.q[7:0];
 	            cpu_req.addr <= 32'hdff180;
 	            cpu_req.dm<=2'b11;
-			    cpu_req.d<=rgb ^ btns2 ^ btns1;
+			    cpu_req.d<=rgb ^ btns2 ^ {8'b0,btns1};
 			    cpu_req.wr<=1'b1;
 			    cpu_req.req<=~cpu_resp.ack;
-			    rgb <= rgb + {btns2[8],btns2[10],btns1[6],1'b1};
+			    rgb <= rgb + {12'b0,btns2[8],btns2[10],btns1[6],1'b1};
                 state <= WRITELED;
 		    end
     	end
@@ -117,7 +117,7 @@ always @(posedge clocks.sysclk) begin
 	            cpu_req.addr <= 32'hbfe001;
 	            cpu_req.dm<=2'b11;
                 cpu_req.wr<=1'b1;
-                cpu_req.d<={ledcounter[19],1'b0}; // Keep OVL low, LED toggles.
+                cpu_req.d<={14'b0,ledcounter[19],1'b0}; // Keep OVL low, LED toggles.
 			    cpu_req.req<=~cpu_resp.ack;
                 state <= READRMB;
             end            

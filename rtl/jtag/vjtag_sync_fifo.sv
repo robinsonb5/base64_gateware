@@ -1,0 +1,80 @@
+// FIFO queue for debug channel.
+// Synchronous, fall-through semantics.
+
+// Also has a lead-in mode, activated by setting "leadin" to "01", "10" or "11".
+// While lead in"mode is active, the read pointer will be forced to track the 
+// write pointer with an offset of 1/4, 1/2 or 3/4 of the FIFO depth,
+// effectively disabling the full / empty logic.
+
+module vjtag_sync_fifo #(parameter fifowidth = 32, parameter fifodepth = 6) (
+	input sysclk,
+	input reset_n,
+	
+	// Read side
+	input rd_en,
+	output reg [fifowidth-1:0] dout,
+	output empty,
+	
+	// Write side
+	input wr_en,
+	input [fifowidth-1:0] din,
+	output full,
+	
+	input [1:0] leadin
+);
+
+reg [fifowidth-1:0] storage [2**fifodepth];
+reg [fifodepth-1:0] readptr;
+reg [fifodepth-1:0] writeptr=0;
+reg [fifodepth-1:0] writeptr_next=1;
+
+assign empty = (readptr==writeptr) ? 1'b1 : 1'b0;
+assign full = (leadin==2'b00 && readptr==writeptr_next) ? 1'b1 : 1'b0;
+
+
+// Write logic
+
+always @(posedge sysclk) begin
+	if(wr_en && !full) begin
+		storage[writeptr]<=din;
+		writeptr<=writeptr_next;
+		writeptr_next <= writeptr_next+1;
+	end
+	if(!reset_n) begin
+		writeptr <= 0;
+		writeptr_next <= 1;
+	end
+end
+
+
+// Read logic
+
+always @(posedge sysclk) begin
+
+	dout <= storage[readptr];
+	if(rd_en && !empty) begin
+		readptr<=readptr+1;
+	end
+	
+	// In leadin mode, make the read pointer track the write pointer with an offset determined by leadin.
+	if(wr_en && !full) begin
+		if(|leadin)
+			readptr <= {writeptr[fifodepth-1 : fifodepth-2] + leadin,writeptr[fifodepth-3:0]};
+	end
+	
+	if(!reset_n) begin
+		readptr<=0;
+	end
+	
+end
+
+// Verification
+
+`ifdef SOC_VERIFY
+always @(posedge sysclk) begin
+	a_fullempty : assert(full==1'b0 || empty==1'b0);
+end
+`endif
+
+endmodule
+

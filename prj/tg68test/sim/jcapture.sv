@@ -1,12 +1,13 @@
 module jcapture # (
-    parameter capture_width,
-    parameter capture_depth,
+    parameter capturewidth,
+    parameter capturedepth,
+    parameter triggerwidth,
     parameter id
 ) (
     input  clk,
     input  reset_n,
-    input  [capture_width-1:0] d,
-    output [capture_width-1:0] q,
+    input  [capturewidth-1:0] d,
+    output [capturewidth-1:0] q,
     output update
 );
 

@@ -30,19 +30,13 @@
         <Source name="../../rtl/hostclocks.sv" type="Verilog" type_short="Verilog">
             <Options/>
         </Source>
-        <Source name="../../rtl/jtag/vjtag_fifo.vhd" type="VHDL" type_short="VHDL">
+        <Source name="../../rtl/jtag/vjtag_sync_fifo.sv" type="Verilog" type_short="Verilog">
             <Options/>
         </Source>
-        <Source name="../../rtl/jtag/jcapture.vhd" type="VHDL" type_short="VHDL">
+        <Source name="../../rtl/jtag/vjtag_ecp5.sv" type="Verilog" type_short="Verilog">
             <Options/>
         </Source>
-        <Source name="../../rtl/util/cdc_pulse.vhd" type="VHDL" type_short="VHDL">
-            <Options/>
-        </Source>
-        <Source name="../../rtl/jtag/jcapture_pkg.vhd" type="VHDL" type_short="VHDL">
-            <Options/>
-        </Source>
-        <Source name="../../rtl/jtag/debug_virtualjtag_ECP5.vhd" type="VHDL" type_short="VHDL">
+        <Source name="../../rtl/jtag/jcapture.sv" type="Verilog" type_short="Verilog">
             <Options/>
         </Source>
         <Source name="../../rtl/jtag/jtaggwrapper.v" type="Verilog" type_short="Verilog">

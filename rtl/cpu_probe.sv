@@ -2,9 +2,9 @@ import base64_m68k_pkg::*;
 
 module cpu_probe #(
     parameter id = 16'h680a,    // TCL scripts will use this ID to ensure they're talking to the correct design
-    parameter capture_depth = 9,
-    parameter out_width = 8,
-    parameter extra_width = 1   // Bit width of any extra signals we might want to bring in
+    parameter capturedepth = 9,
+    parameter outwidth = 8,
+    parameter extrawidth = 1   // Bit width of any extra signals we might want to bring in
 ) (
 	input m68k_clocks       clocks,
 
@@ -15,21 +15,22 @@ module cpu_probe #(
 	input m68k_misc_in      m_misc_in,
 	input m68k_misc_out     m_misc_out,
 
-    input [extra_width-1:0] extra,
+    input [extrawidth-1:0] extra,
 
     output update,
-    output [out_width-1:0]  q
+    output [outwidth-1:0]  q
 );
 
 // JTAG capture module to monitor the cpu bus lines
-localparam cpusignal_width = 71;
-localparam capture_width = cpusignal_width + extra_width;
-wire [capture_width-1:0] jtag_d;
-wire [capture_width-1:0] jtag_q;
+localparam cpusignalwidth = 71;
+localparam capturewidth = cpusignalwidth + extrawidth;
+wire [capturewidth-1:0] jtag_d;
+wire [capturewidth-1:0] jtag_q;
 wire jtag_update;
 jcapture #(
-    .capture_width(capture_width),
-    .capture_depth(capture_depth),
+    .capturewidth(capturewidth),
+    .capturedepth(capturedepth),
+    .triggerwidth(capturewidth),
     .id(id)
 ) capture_inst (
 	.clk(clocks.sysclk),
@@ -57,9 +58,9 @@ assign jtag_d[68:45] = {m_addr.a,1'b0};
 assign jtag_d[69] = {m_addr.a_en};
 assign jtag_d[70] = {m_addr.drive};
 
-assign jtag_d[70+extra_width:71] = extra;
+assign jtag_d[70+extrawidth:71] = extra;
 
 assign update = jtag_update;
-assign q = jtag_q[out_width-1:0];
+assign q = jtag_q[outwidth-1:0];
 	
 endmodule

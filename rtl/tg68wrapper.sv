@@ -37,11 +37,13 @@ wire [1:0] tg68_state;
 wire [2:0] tg68_fc;
 wire tg68_reset_out;
 reg  tg68_reset_in;
+reg tg68_reset_s;
 
 always @(posedge clocks.sysclk) begin
 	clkena <= 1'b0;
 
-    tg68_reset_in <= socket_miscin.reset;
+	tg68_reset_s <= socket_miscin.reset;
+    tg68_reset_in <= tg68_reset_s;
 
 	case(state)
 		RESET: begin
@@ -54,7 +56,7 @@ always @(posedge clocks.sysclk) begin
 			state <= REQ;
 			end
 		REQ: begin
-				if(slower[0]) begin
+				if(slower[0] && !clkena) begin
 					cpu_req.addr <= tg68_addr;
 					cpu_req.d <= tg68_dout;
 					cpu_req.dm <= {~tg68_uds,~tg68_lds};				

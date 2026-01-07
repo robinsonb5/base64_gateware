@@ -14,7 +14,8 @@ module tb(
   output wire           lds,
   output wire           rw,
   output wire [23:0]    a,
-  output wire [15:0]    d
+  output wire [15:0]    d,
+  input  wire [15:0]    q
 );
 /* verilator lint_off MULTIDRIVEN */
 
@@ -58,6 +59,7 @@ virtualtoplevel vt (
 
 assign min.dtack = 1'b0; // DTACK grounded!
 assign min.vpa = 1'b1;
+assign min.reset = 1'b1;
 assign e = mout.e;
 assign clocks.sysclk=sysclk;
 assign clocks.svclk=svclk;
@@ -68,6 +70,7 @@ assign uds = addr.uds;
 assign lds = addr.lds;
 assign rw = addr.rw;
 assign d =dout.q;
+assign din.d = q;
 
 /* verilator lint_on MULTIDRIVEN */
 

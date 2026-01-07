@@ -35,13 +35,19 @@ wire [15:0] tg68_dout;
 wire tg68_lds,tg68_uds,tg68_wr;
 wire [1:0] tg68_state;
 wire [2:0] tg68_fc;
-wire tg68_reset;
+wire tg68_reset_out;
+reg  tg68_reset_in;
+
 always @(posedge clocks.sysclk) begin
 	clkena <= 1'b0;
+
+    tg68_reset_in <= socket_miscin.reset;
+
 	case(state)
 		RESET: begin
 				cpu_req.req <= 1'b0;
 				clkena <= 1'b0;
+                tg68_reset_in <= 1'b0;
 				state <= INIT;
 			end
 		INIT: begin
@@ -93,7 +99,7 @@ end
 /* verilator lint_off UNOPTFLAT */
 TG68KdotC_Kernel tg68 (
 	.clk(clocks.sysclk),
-	.nReset(clocks.reset_n_sys),
+	.nReset(tg68_reset_in),
 	.clkena_in(clkena),
 	.data_in(tg68_din),
 	.IPL(socket_miscin.ipl),
@@ -107,7 +113,7 @@ TG68KdotC_Kernel tg68 (
 	.nLDS(tg68_lds),
 	.busstate(tg68_state),
 	.longword(),
-	.nResetOut(tg68_reset),
+	.nResetOut(tg68_reset_out),
 	.FC(tg68_fc),
 	.clr_berr(),
 	.skipFetch(),

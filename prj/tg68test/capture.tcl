@@ -44,6 +44,10 @@ source ${loc}/../../rtl/jtag/jcapture.tcl
 ::jcapture::settrigger mask reset_n 1
 ::jcapture::settrigger value reset_n 1
 
+#::jcapture::settrigger edge a 0x000000
+#::jcapture::settrigger mask a 0xff0000
+#::jcapture::settrigger value a 0xfc0000
+
 puts "Recording to cap.vcd"
 
 	set chan [::jcapture::create_vcd cap.vcd 0]

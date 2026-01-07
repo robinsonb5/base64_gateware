@@ -93,11 +93,11 @@ proc ::jcapture::setup { newtap capture_fields {designid 0x35ac}} {
 	# Set an initial capture width, otherwise the FIFO flush will fail
 	set ::jcapture::capture_width 32
 
-	dump_fifo
+	flush_fifo
 
 	set t [virscan status]
 	scan $t %x t
-	set t [expr {$t >> 16}]
+	set t [expr {$t >> 4}]
 	if {$t != $designid} {
 		puts "ID mismatch - got 0x[format %x $t], expected $designid - exiting."
 		exit	
@@ -105,18 +105,15 @@ proc ::jcapture::setup { newtap capture_fields {designid 0x35ac}} {
 
 	# Fetch capture width, depth and trigger width from design
 	virscan capturewidth
-	wait_fifobusy
-	set t [vdrscan 16 0]
+	set t [vdrscan 32 0]
 	set ::jcapture::capture_width [expr 0x$t]
 
 	virscan capturedepth
-	wait_fifobusy
-	set t [vdrscan 16 0]
+	set t [vdrscan 32 0]
 	set ::jcapture::capture_depth [expr "2**0x$t"]
 
 	virscan triggerwidth
-	wait_fifobusy
-	set t [vdrscan 16 0]
+	set t [vdrscan 32 0]
 	set ::jcapture::trigger_width [expr 0x$t]
 
 	puts "Capture width: ${::jcapture::capture_width}"
@@ -146,7 +143,7 @@ proc ::jcapture::virscan {{cmd status}} {
 	}
 	if {$v>=0} {
 		irscan $::jcapture::tap $::jcapture::vir
-		return [drscan $::jcapture::tap 32 $v]
+		return [drscan $::jcapture::tap 20 $v]
 	} else {
 		error "Unknown command $cmd";
 	}
@@ -344,12 +341,14 @@ proc ::jcapture::fifo_to_vcd { chan } {
 
 # Silently empty the FIFO.
 proc ::jcapture::flush_fifo { } {
+	puts "Flushing FIFO..."
 	set status [virscan status]
 	while {[expr "0x$status & $::jcapture::flag_empty"] == 0 } {
 		vdrscan $::jcapture::capture_width 0
 		set status [virscan status]
-		puts "$status"
+#		puts "$status"
 	}
+	puts "Done"
 }
 
 proc ::jcapture::triggerconf {idx} {
@@ -357,6 +356,7 @@ proc ::jcapture::triggerconf {idx} {
 	set lastfield [expr {$fields - 1}]
 	for {set i 0} {$i < [llength $::jcapture::fields]} {incr i } {
 		set record [lindex $::jcapture::fields $i]
+        puts "$i - [lindex $record 0] [lindex $record $idx]"
 		if {$i==0} {
 			vdrscan [lindex $record 1] [lindex $record $idx] -start
 		} else {
@@ -367,6 +367,7 @@ proc ::jcapture::triggerconf {idx} {
 			}
 		}
 	}
+    puts ""
 }
 
 proc ::jcapture::checktrigger { } {

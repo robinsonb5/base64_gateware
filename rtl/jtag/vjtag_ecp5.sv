@@ -39,11 +39,6 @@ wire tck_p,tck_n; // Rising and falling edges of JTAG clock, in sysclk domain
 assign tck_p=tck_s[2:1]==2'b01 ? 1'b1 : 1'b0;
 assign tck_n=tck_s[2:1]==2'b10 ? 1'b1 : 1'b0;
 
-reg [bits-1:0] shiftreg;
-wire [bits-1:0] shiftnext;
-
-assign shiftnext = {to_reg.tdi,shiftreg[bits-1:1]};
-
 reg capture;
 always @(posedge sysclk) begin
 	if(tck_p) begin
@@ -54,7 +49,25 @@ always @(posedge sysclk) begin
 	end
 end
 
+// As we leave the shift state we latch the previous value of tdi.
+// Without this, we lose the last bit shifted when doing a multi-part
+// shift interspersed with the DR_PAUSE state.
+reg shift_d;
+reg tdi_latched;
+always @(posedge sysclk) begin
+	if(tck_p) begin
+		shift_d <= to_reg.shift;
+		if(shift_d)
+			tdi_latched <= to_reg.tdi;
+	end
+end
+
+wire tdi_mux = shift_d ? to_reg.tdi : tdi_latched;
+
+reg [bits-1:0] shiftreg;
+wire [bits-1:0] shiftnext = {tdi_mux,shiftreg[bits-1:1]};
 reg selected;
+
 always @(posedge sysclk) begin
 	upd <= 1'b0;
 

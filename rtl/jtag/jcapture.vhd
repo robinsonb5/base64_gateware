@@ -42,6 +42,7 @@ generic(
 port(
 	clk : in std_logic;
 	reset_n : in std_logic;
+    stb : in std_logic := '1';  -- Strobe input, allows capturing on a divided sysclk
 	-- Design interface
 	d : in std_logic_vector(capture_width-1 downto 0);
 	q : buffer std_logic_vector(capture_width-1 downto 0); -- Optional output data
@@ -174,7 +175,7 @@ begin
 					if fifo_full='1' then
 						capstate<=STATE_IDLE;
 					else
-						fifo_wr<='1';
+						fifo_wr<=stb;
 					end if;
 				when STATE_READ =>
 					if fifo_empty='1' then
@@ -225,7 +226,7 @@ jtag_glue : block
 	signal frd_en,fwr_en,fempty,ffull : std_logic;
 	signal fwr : std_logic_vector(capture_width-1 downto 0);
 	signal frd : std_logic_vector(capture_width-1 downto 0);
-	
+
 begin
 
 	debug_virtualjtag : entity work.debug_virtualjtag

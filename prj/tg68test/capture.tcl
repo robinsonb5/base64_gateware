@@ -40,9 +40,13 @@ source ${loc}/../../rtl/jtag/jcapture.tcl
 
 ::jcapture::setup target.tap $capture_fields $projectid
 
-::jcapture::settrigger edge reset_n 1
-::jcapture::settrigger mask reset_n 1
-::jcapture::settrigger value reset_n 1
+#::jcapture::settrigger edge reset_n 1
+#::jcapture::settrigger mask reset_n 1
+#::jcapture::settrigger value reset_n 1
+
+::jcapture::settrigger edge pad 1
+::jcapture::settrigger mask pad 1
+::jcapture::settrigger value pad 0
 
 #::jcapture::settrigger edge a 0x000000
 #::jcapture::settrigger mask a 0xff0000

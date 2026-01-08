@@ -82,10 +82,10 @@ always @(posedge clocks.sysclk) begin
 		end
         READRMB : begin
             if(cpu_resp.ack == cpu_req.req) begin
-	            cpu_req.addr <= 32'hfc0004; // ROM
+	            cpu_req.addr <= 32'hdff016; // POTGOR
 	            cpu_req.dm<=2'b11;
                 cpu_req.wr<=1'b0;
-			    cpu_req.req<=~cpu_resp.ack;
+		    cpu_req.req<=~cpu_resp.ack;
                 state <= READLMB;
             end
         end

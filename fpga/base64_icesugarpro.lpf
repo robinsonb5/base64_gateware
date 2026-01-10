@@ -171,10 +171,15 @@ IOBUF PORT "a[7]" IO_TYPE=LVTTL33 ;
 
 # IceSugarPro signals
 
-LOCATE COMP "clk_i" SITE "P6" ;
-IOBUF PORT "clk_i" IO_TYPE=LVCMOS33 PULLMODE=UP ;
-FREQUENCY   PORT "clk_i"    25 MHZ;
+LOCATE     COMP "clk_i"  SITE "P6" ;
+IOBUF      PORT "clk_i"  IO_TYPE=LVCMOS33 PULLMODE=UP ;
+FREQUENCY  PORT "clk_i"  25 MHZ;
 
+LOCATE     COMP "txd"    SITE "B9";   // iCELink-UART3-RX
+IOBUF      PORT "txd"    IO_TYPE=LVCMOS33;
+
+LOCATE     COMP "rxd"    SITE "A9";
+IOBUF      PORT "rxd"    IO_TYPE=LVCMOS33;
 
 # SDRAM signals
 

@@ -10,7 +10,7 @@ HDL_FILES_SYNTH = $(HDL_FILES) ../../fpga/base64_icesugarpro_top.sv ../../pll/ec
 			../../rtl/TG68K.C/TG68K_Pack.vhd ../../rtl/TG68K.C/TG68K_ALU.vhd ../../rtl/TG68K.C/TG68KdotC_Kernel.vhd \
 			../../rtl/jtag/vjtag_ecp5.sv ../../rtl/jtag/vjtag_sync_fifo.sv ../../rtl/jtag/jcapture.sv
 
-HDL_FILES_SIM = $(HDL_FILES) sim/clocks.sv sim/jcapture.sv tb.sv sim/tg68.v
+HDL_FILES_SIM = $(HDL_FILES) ../../sim/clocks.sv ../../sim/jcapture.sv ../../sim/tg68.v tb.sv
 
 PROJ_FILE = $(PRJ).ldf
 BIT_FILE = impl1/$(PRJ)_impl1.bit
@@ -76,8 +76,8 @@ $(OBJ_DIR)/Vtb: ${OBJ_DIR}/Vtb.cpp tb.cpp
 sim: $(OBJ_DIR)/Vtb
 	$(OBJ_DIR)/Vtb
 
-sim/TG68KdotC_Kernel.v:
-	make -C sim
+../../sim/TG68KdotC_Kernel.v:
+	make -C ../../sim
 
 
 

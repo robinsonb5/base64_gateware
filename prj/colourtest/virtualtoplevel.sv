@@ -2,6 +2,8 @@ import sdram_pkg::*;
 import base64_m68k_pkg::*;
 import cpu_pkg::*;
 
+`default_nettype none
+
 module virtualtoplevel (
 	input m68k_clocks        clocks,
 	
@@ -25,7 +27,11 @@ module virtualtoplevel (
 	// LEDs
 	output led_red,
 	output led_green,
-	output led_blue
+	output led_blue,
+	
+	// UART
+	input rxd,
+	output txd
 );
 
 assign sdr_out.cs=1'b1;
@@ -145,14 +151,14 @@ m68k_bridge bridge (
 // JTAG capture module to monitor the cpu
 wire [0:0] jtag_q;
 wire jtag_update;
-cpu_probe #(.outwidth(1)) probe (
+cpu_probe #(.outwidth(1),.extrawidth(2)) probe (
     .clocks(clocks),
     .m_addr(socket_addr_ctrl),
     .m_data_in(socket_din),
     .m_data_out(socket_dout),
     .m_misc_in(socket_miscin),
     .m_misc_out(socket_miscout),
-    .extra(1'b0),
+    .extra({rxd,txd}),
     .update(jtag_update),
     .q(jtag_q)
 );
@@ -169,5 +175,30 @@ always @(posedge clocks.sysclk) begin
 	sctr<=sctr+1;
 end
 assign led_green = sctr[25];
-	
+
+
+// UART loopback
+wire[7:0] uart_d;
+wire uart_stb;
+reg led;
+always @(posedge clocks.svclk) begin
+	if(uart_stb)
+		led <= ~led;
+end
+assign led_blue = led;
+
+uart uart_inst (
+	.clk(clocks.svclk),
+	.reset_n(1'b1),
+	.clkdiv(16'd868), //737), // 100MHz / 115,200 baud
+	.d(uart_d),
+	.d_stb(uart_stb),
+	.q(uart_d),
+	.rxint(uart_stb),
+	.txint(),
+	.txready(),
+	.rxd(rxd),
+	.txd(txd)
+);
+
 endmodule

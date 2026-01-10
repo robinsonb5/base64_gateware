@@ -3,7 +3,7 @@
 /* verilator lint_off UNSIGNED */
 /* verilator lint_off UNOPTFLAT */
 
-`include "sim/TG68KdotC_Kernel.v"
+`include "../../sim/TG68KdotC_Kernel.v"
 
 /* verilator lint_on UNSIGNED */
 /* verilator lint_on UNOPTFLAT */

@@ -15,7 +15,9 @@ module tb(
   output wire           rw,
   output wire [23:0]    a,
   output wire [15:0]    d,
-  input  wire [15:0]    q
+  input  wire [15:0]    q,
+  input  wire           rxd,
+  output wire           txd
 );
 /* verilator lint_off MULTIDRIVEN */
 
@@ -54,7 +56,9 @@ virtualtoplevel vt (
 	.spi_clk(spi_clk),
 	.led_red(led_red),
 	.led_green(led_green),
-	.led_blue(led_blue)
+	.led_blue(led_blue),
+	.rxd(rxd),
+	.txd(txd)
 );
 
 assign min.dtack = 1'b0; // DTACK grounded!

@@ -73,7 +73,11 @@ module base64_icesugarpro_top (
 	inout  sd_d0,	// SPI CIPO
 	inout  sd_d1,
 	inout  sd_d2,
-	inout  sd_d3	// SPI CS
+	inout  sd_d3,	// SPI CS
+	
+	// UART
+	input rxd,
+	output txd
 );
 
 
@@ -197,7 +201,10 @@ virtualtoplevel project (
 	// LEDs
 	.led_red(led_red),
 	.led_green(led_green),
-	.led_blue(led_blue)
+	.led_blue(led_blue),
+	// UART
+	.rxd(rxd),
+	.txd(txd)
 );
 
 endmodule

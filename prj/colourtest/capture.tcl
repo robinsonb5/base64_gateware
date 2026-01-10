@@ -30,7 +30,8 @@ set capture_fields {
     { a 24 }
     { a_en 1 }
     { a_drive 1 }
-	{ pad 1 }
+	{ rxd 1 }
+	{ txd 1 }
 }
 
 puts "Setting TAP, capture fields and length"
@@ -43,6 +44,11 @@ source ${loc}/../../rtl/jtag/jcapture.tcl
 ::jcapture::settrigger edge reset_n 1
 ::jcapture::settrigger mask reset_n 1
 ::jcapture::settrigger value reset_n 1
+
+#::jcapture::settrigger edge rxd 1
+#::jcapture::settrigger mask rxd 1
+#::jcapture::settrigger value rxd 0
+
 
 puts "Recording to cap.vcd"
 

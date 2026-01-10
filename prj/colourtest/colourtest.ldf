@@ -48,6 +48,9 @@
         <Source name="../../rtl/cpu_probe.sv" type="Verilog" type_short="Verilog">
             <Options/>
         </Source>
+        <Source name="../../rtl/peripherals/uart.sv" type="Verilog" type_short="Verilog">
+            <Options/>
+        </Source>
         <Source name="../../fpga/base64_icesugarpro.lpf" type="Logic Preference" type_short="LPF">
             <Options/>
         </Source>

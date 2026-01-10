@@ -25,7 +25,11 @@ module virtualtoplevel (
 	// LEDs
 	output led_red,
 	output led_green,
-	output led_blue
+	output led_blue,
+	
+	// UART
+	input rxd,
+	output txd
 );
 
 assign sdr_out.cs=1'b1;
@@ -100,5 +104,7 @@ always @(posedge clocks.sysclk) begin
 	sctr<=sctr+1;
 end
 assign led_green = sctr[25];
-	
+
+assign txd=1'b1;
+
 endmodule

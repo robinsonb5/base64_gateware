@@ -1,0 +1,52 @@
+diff -urN vbcc/machines/m68k/machine.c vbcc_patched/machines/m68k/machine.c
+--- vbcc/machines/m68k/machine.c	2022-03-02 17:25:49.000000000 +0000
++++ vbcc_patched/machines/m68k/machine.c	2023-06-28 14:04:34.928819979 +0100
+@@ -82,13 +82,14 @@
+ 
+ /* Names of target-specific variable attributes.                */
+ char *g_attr_name[]={"__far","__near","__chip","__saveds",
+-                     "__interrupt","__amigainterrupt",0};
++                     "__interrupt","__amigainterrupt","__weak",0};
+ #define FAR 1
+ #define NEAR 2
+ #define CHIP 4
+ #define SAVEDS 8
+ #define INTERRUPT 16
+ #define AMIINTERRUPT 32
++#define WEAK 64
+ #define STDARGS 64 /* not used, just for compatibility */
+ 
+ int MINADDI2P=SHORT;
+@@ -290,7 +291,7 @@
+   if(GAS)
+     emit(f,"\t.section\t");
+   else
+-    emit(f,"\tsection\t");
++    emit(f,"\tsection\t");  
+   while(*sec&&*sec!=')') emit_char(f,*sec++);
+   emit(f,"\n");
+   if(f) section=SPECIAL;
+@@ -916,10 +917,18 @@
+     }
+     if(v->storage_class==EXTERN){
+       if((v->flags&(INLINEFUNC|INLINEEXT))!=INLINEFUNC){
+-        if(GAS){
+-	  emit(f,"\t.global\t%s%s\n",FUNCPREFIX(v->vtyp),v->identifier);
+-        }else{
+-	  emit(f,"\tpublic\t%s%s\n",FUNCPREFIX(v->vtyp),v->identifier);
++		if(v->tattr&WEAK) {
++          if(GAS) {
++	        emit(f,"\t.weak\t%s%s\n",FUNCPREFIX(v->vtyp),v->identifier);
++	      } else {
++	        emit(f,"\tweak\t%s%s\n",FUNCPREFIX(v->vtyp),v->identifier);
++	      }
++	   } else {
++          if(GAS){
++	    emit(f,"\t.global\t%s%s\n",FUNCPREFIX(v->vtyp),v->identifier);
++          }else{
++	    emit(f,"\tpublic\t%s%s\n",FUNCPREFIX(v->vtyp),v->identifier);
++          }
+         }
+       }
+     }
+

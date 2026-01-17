@@ -1,7 +1,7 @@
 #ifndef SPI_H
 #define SPI_H
 
-#define SPIBASE 0x10000100
+#define SPIBASE 0x01000100
 #define HW_SPI(x) *(volatile unsigned int *)(SPIBASE+x)
 
 /* SPI registers */

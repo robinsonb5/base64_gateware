@@ -1,5 +1,3 @@
-  others => ( x"00000000")
-);
 
 -- Xilinx Vivado attributes
 attribute ram_style: string;

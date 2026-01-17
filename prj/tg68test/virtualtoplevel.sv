@@ -61,7 +61,9 @@ tg68wrapper cpuwrapper (
 	.clocks(clocks),
 	.cpu_req(cpu_req),
 	.cpu_resp(cpu_resp),
-	.socket_miscin(socket_miscin)
+	.socket_miscin(socket_miscin),
+	.rxd(rxd),
+	.txd(txd)
 );
 
 m68k_bridge bridge (
@@ -104,7 +106,5 @@ always @(posedge clocks.sysclk) begin
 	sctr<=sctr+1;
 end
 assign led_green = sctr[25];
-
-assign txd=1'b1;
 
 endmodule

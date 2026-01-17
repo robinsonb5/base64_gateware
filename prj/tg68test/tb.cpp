@@ -47,7 +47,7 @@ int main(int argc, char **argv) {
 	tb->trace(trace, 99);
 	trace->open("sim.vcd");
 
-	for(int i=0;i<100;++i) {
+	for(int i=0;i<500;++i) {
 		tick(1);
 		tick(0);
 	}

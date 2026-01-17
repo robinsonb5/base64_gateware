@@ -64,6 +64,7 @@ virtualtoplevel vt (
 assign min.dtack = 1'b0; // DTACK grounded!
 assign min.vpa = 1'b1;
 assign min.reset = 1'b1;
+assign min.ipl = 3'b111;
 assign e = mout.e;
 assign clocks.sysclk=sysclk;
 assign clocks.svclk=svclk;

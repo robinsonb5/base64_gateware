@@ -7,7 +7,7 @@
 extern "C" {
 #endif
 
-#define UARTBASE 0x10000000
+#define UARTBASE 0x01000000
 #define HW_UART(x) *(volatile unsigned int *)(UARTBASE+x)
 
 #define REG_UART 0x0

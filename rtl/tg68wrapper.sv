@@ -7,15 +7,21 @@ module tg68wrapper (
 	input m68k_clocks clocks,
 	input cpu_response cpu_resp,
 	output cpu_request cpu_req,
-	input m68k_misc_in socket_miscin // for IPL, etc.
+	input m68k_misc_in socket_miscin, // for IPL, etc.
+	input rxd,
+	output txd
 );
 
-typedef enum logic[2:0] {
+typedef enum logic[3:0] {
 	RESET,
 	INIT,
 	REQ,
+	DECODE,
 	WAIT,
-	WAIT_INTERNAL
+	WAIT_INTERNAL,
+	PERIPHERAL,
+	FASTRAM,
+	ROM
 } state_t;
 
 state_t state;
@@ -39,41 +45,179 @@ wire tg68_reset_out;
 reg  tg68_reset_in;
 reg tg68_reset_s;
 
+// Address decoding
+
+// We need the decode the following regions:
+// First n kb for boot ROM
+// UART and SPI register block at 0x01000000
+// 32-bit Fast RAM, most likely at 0x40000000
+// 24-bit Fast RAM at 0x200000
+// Kickstart ROM at 0xf80000 - either forward to motherboard or handle ourselves
+// Autoconfig range at 0xe80000
+// CIA at 0xbfe001 - for control of OVL bit
+// (Maybe Akiko at 0xb80000 for C2P converter?)
+
+
+// These two are critical timewise, so we generate them combinationally:
+wire sel_fast24 = tg68_addr[31:24] == 8'h0 && (tg68_addr[23:20] == 4'h2) ? 1'b1 : 1'b0;
+wire sel_fast32 = tg68_addr[31:27] == 5'h0 && tg68_addr[26]==1'b1 ? 1'b1 : 1'b0;
+
+// The rest can be handled on a more relaxed schedule, so we use a latched copy
+// of the address
+reg [31:0] tg68_addr_d;
+always @(posedge clocks.sysclk)
+	tg68_addr_d <= tg68_addr;
+
+reg softkick_ena;
+reg softkick_overlay;
+
+wire sel_autoconfig = tg68_addr_d[31:16] == 16'h00b8 ? 1'b1 : 1'b0;
+wire sel_bootrom = tg68_addr_d[31:16] == 16'h0000 && bootrom_ena ? 1'b1 : 1'b0;
+wire sel_kickoverlay = tg68_addr_d[31:16] == 16'h0000 && softkick_ena && softkick_overlay ? 1'b1 : 1'b0;
+wire sel_kickstart = tg68_addr_d[31:20] == 12'h00f && tg68_addr_d[19]==1'b1 && softkick_ena ? 1'b1 : 1'b0;
+wire sel_cia = tg68_addr_d[31:16] == 16'h00bf ? 1'b1 : 1'b0;
+wire sel_peripherals = tg68_addr_d[31:24] == 8'h01 ? 1'b1 : 1'b0;
+
+// Boot ROM
+
+reg bootrom_ena;
+reg  [15:0] bootrom_d;
+wire [15:0] bootrom_q;
+reg bootrom_we;
+reg  [1:0] bootrom_bs;
+wire [15:1] bootrom_a;
+
+Firmware_ROM rom_inst (
+	.clk(clocks.sysclk),
+	.addr(bootrom_a),
+	.q(bootrom_q),
+	.d(bootrom_d),
+	.we(bootrom_we),
+	.bs(bootrom_bs)
+);
+
+assign bootrom_a = tg68_addr_d[15:1];
+
+
+// Peripherals:
+// UART
+
+reg  [7:0] uart_d;
+reg  uart_stb;
+wire [7:0] uart_q;
+wire uart_rxint;
+wire uart_txready;
+reg  uart_rxpending;
+
+uart uart_inst (
+	.clk(clocks.sysclk),
+	.reset_n(clocks.reset_n_sys),
+	.clkdiv(16'd737),
+	.d(uart_d),
+	.d_stb(uart_stb),
+	.q(uart_q),
+	.rxint(uart_rxint),
+	.txready(uart_txready),
+	.txint(),
+	.rxd(rxd),
+	.txd(txd)
+);
+
+localparam STATE_FETCH = 2'b00;
+localparam STATE_INTERNAL = 2'b01;
+localparam STATE_READ = 2'b10;
+localparam STATE_WRITE = 2'b11;
+
 always @(posedge clocks.sysclk) begin
 	clkena <= 1'b0;
 
 	tg68_reset_s <= socket_miscin.reset;
     tg68_reset_in <= tg68_reset_s;
 
+	bootrom_we <= 1'b0;
+	uart_stb <= 1'b0;
+
 	case(state)
 		RESET: begin
+				softkick_overlay <= 1'b1;
+				uart_rxpending <= 1'b0;
 				cpu_req.req <= 1'b0;
 				clkena <= 1'b0;
                 tg68_reset_in <= 1'b0;
+                bootrom_ena <= 1'b1;
 				state <= INIT;
 			end
 		INIT: begin
-			state <= REQ;
+			state <= DECODE;
+			end
+		DECODE: begin
+				if(slower[0] && !clkena) begin
+					if(sel_fast24 || sel_fast32) begin // We need to handle Fast RAM requests as promptly as possible
+					
+					end else begin
+						state <= REQ;	// Handle other requests a cycle later
+					end
+				end
+			end
+		ROM: begin
+				tg68_din <= bootrom_q;
+				clkena <= 1'b1;
+				state <= DECODE;
 			end
 		REQ: begin
-				if(slower[0] && !clkena) begin
+				if(sel_peripherals) begin
+					case(tg68_addr_d[11:8])
+						4'd0: begin // UART
+								uart_d <= tg68_dout[7:0];
+								tg68_din <= {6'b0,uart_txready,uart_rxpending,uart_q};
+								if(tg68_state == STATE_WRITE) begin
+									if(uart_txready) begin
+										uart_stb <= 1'b1;
+										clkena <= 1'b1;
+										state <= DECODE;
+									end
+								end else begin
+									uart_rxpending<=1'b0;
+									clkena <= 1'b1;
+								end
+
+							end
+						4'd1: begin // SPI SD card
+							clkena <= 1'b1;
+							end
+						default : 
+							clkena <= 1'b1;
+					endcase
+				end else if(sel_bootrom) begin
+					bootrom_d <= tg68_dout;
+					bootrom_bs <= {~tg68_uds,~tg68_lds};
+					bootrom_we <= ~tg68_wr;
+					state <= ROM;
+				end else if(sel_autoconfig) begin
+
+				end else if(sel_kickstart) begin
+		
+				end else begin
+					if(sel_cia && tg68_state == STATE_WRITE) // First write to CIA registers cancels overlay
+						softkick_overlay <= 1'b0;
+
 					cpu_req.addr <= tg68_addr;
 					cpu_req.d <= tg68_dout;
 					cpu_req.dm <= {~tg68_uds,~tg68_lds};				
 					case(tg68_state)
-						2'b00: begin // Instruction fetch
+						STATE_FETCH: begin // Instruction fetch
 								cpu_req.req<=~cpu_resp.ack;
 								cpu_req.wr <= 1'b0;
 								cpu_req.ifetch <= 1'b1;
 							end
-						2'b01: begin // Internal cycle
+						STATE_INTERNAL: begin // Internal cycle
 							end
-						2'b10: begin // Data read
+						STATE_READ: begin // Data read
 								cpu_req.req<=~cpu_resp.ack;
 								cpu_req.wr <= 1'b0;
 								cpu_req.ifetch <= 1'b0;
 							end
-						2'b11: begin // Data write
+						STATE_WRITE: begin // Data write
 								cpu_req.req<=~cpu_resp.ack;
 								cpu_req.wr <= 1'b1;
 								cpu_req.ifetch <= 1'b0;
@@ -82,16 +226,22 @@ always @(posedge clocks.sysclk) begin
 					state <= WAIT;
 				end
 			end
+		PERIPHERAL : begin
+		
+		end
 		WAIT: begin
 				if(slower[0] && (cpu_resp.ack==cpu_req.req)) begin
 					tg68_din <= cpu_resp.q;
 					clkena <=1'b1;
-					state <= REQ;
+					state <= DECODE;
 				end
 			end
 		default :
 			state <= INIT;
 	endcase
+
+	if(uart_rxint)
+		uart_rxpending<=1'b1;
 
 	if(!clocks.reset_n_sys)
 		state <= RESET;

@@ -2,13 +2,16 @@ PRJ=tg68test
 OBJ_DIR=obj_dir
 IMPL_DIR=impl1
 
+FIRMWARE = firmware/Firmware.hex
+
 HDL_FILES = ../../fpga/icesugarpro_board_pkg.sv ../../rtl/sdram_pkg.sv ../../rtl/base64_m68k_pkg.sv ../../rtl/hostclocks.sv \
-			../../rtl/cpu_pkg.sv ../../rtl/m68k_bridge.sv ../../rtl/cpu_probe.sv ../../rtl/tg68wrapper.sv virtualtoplevel.sv
+			../../rtl/cpu_pkg.sv ../../rtl/m68k_bridge.sv ../../rtl/cpu_probe.sv ../../rtl/tg68wrapper.sv virtualtoplevel.sv \
+			firmware/Firmware_ROM.sv ../../rtl/peripherals/uart.sv
 
 HDL_FILES_SYNTH = $(HDL_FILES) ../../fpga/base64_icesugarpro_top.sv ../../pll/ecp5_14MHz_85MHz/clocks/clocks.sbx \
             ../../pll/ecp5_25MHz_85MHz/supervisorclk/supervisorclk.sbx \
 			../../rtl/TG68K.C/TG68K_Pack.vhd ../../rtl/TG68K.C/TG68K_ALU.vhd ../../rtl/TG68K.C/TG68KdotC_Kernel.vhd \
-			../../rtl/jtag/vjtag_ecp5.sv ../../rtl/jtag/vjtag_sync_fifo.sv ../../rtl/jtag/jcapture.sv
+			../../rtl/jtag/vjtag_ecp5.sv ../../rtl/jtag/vjtag_sync_fifo.sv ../../rtl/jtag/jcapture.sv 
 
 HDL_FILES_SIM = $(HDL_FILES) ../../sim/clocks.sv ../../sim/jcapture.sv ../../sim/tg68.v tb.sv
 
@@ -40,10 +43,22 @@ info: ../../site.mk
 	$(info |              output file: cap.vcd)
 	$(info )
 
-clean:
+.phony sim_clean:
+sim_clean:
 	-rm tb
 	-rm $(OBJ_DIR)/*
+
+.phony firmware_clean:
+firmware_clean:
+	-make -C firmware clean
+
+.phony synth_clean:
+synth_clean:
 	-rm $(IMPL_DIR)/*
+
+.phony clean:
+clean: sim_clean firmware_clean
+	
 
 # Project synthesis
 
@@ -52,6 +67,8 @@ bit: $(BIT_FILE)
 $(BIT_FILE): $(HDL_FILES_SYNTH)
 	echo prj_project open ${PROJ_FILE} \; prj_run Export -task Bitgen | $(DIAMOND_PATH)/diamondc
 
+$(FIRMWARE):
+	make -C firmware
 
 # Configure FPGA
 .phony pgm:
@@ -73,7 +90,7 @@ ${OBJ_DIR}/Vtb.cpp: ${HDL_FILES_SIM}
 $(OBJ_DIR)/Vtb: ${OBJ_DIR}/Vtb.cpp tb.cpp
 	make -j -C ${OBJ_DIR} -f Vtb.mk CXX=$(CXX)
 	
-sim: $(OBJ_DIR)/Vtb
+sim: $(FIRMWARE) $(OBJ_DIR)/Vtb
 	$(OBJ_DIR)/Vtb
 
 ../../sim/TG68KdotC_Kernel.v:

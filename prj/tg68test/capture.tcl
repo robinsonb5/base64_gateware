@@ -6,31 +6,16 @@ init
 scan_chain
 
 # 16-bit project ID, so we can be sure we're capturing from the correct design
-set projectid 0x680b
+set projectid 0x68ff
 
 # The total number of bits here must match the width defined in jcapture_pkg.vhd
 set capture_fields {
-	{ clk7 1 }
-	{ clk7_en_n 1 }
-	{ clk7_en_p 1 }
+	{ cpustate 2 }
 	{ reset_n 1 }
-	{ e 1 }
-	{ as 1 }
-	{ uds 1 }
-	{ lds 1 }
-	{ rw 1 }
-	{ dtack 1 }
-	{ vpa 1 }
-	{ vma 1 }
-    { ipl 3 }
-	{ q 16 }
-    { d 16 }
-    { dq_en 1 }
-    { dq_drive 1 }
-    { a 24 }
-    { a_en 1 }
-    { a_drive 1 }
-	{ pad 1 }
+	{ state 4 }
+	{ addr 32 }
+	{ din 16 }
+	{ clkena 1 }
 }
 
 puts "Setting TAP, capture fields and length"
@@ -40,13 +25,13 @@ source ${loc}/../../rtl/jtag/jcapture.tcl
 
 ::jcapture::setup target.tap $capture_fields $projectid
 
-#::jcapture::settrigger edge reset_n 1
-#::jcapture::settrigger mask reset_n 1
-#::jcapture::settrigger value reset_n 1
+::jcapture::settrigger edge reset_n 1
+::jcapture::settrigger mask reset_n 1
+::jcapture::settrigger value reset_n 1
 
-::jcapture::settrigger edge pad 1
-::jcapture::settrigger mask pad 1
-::jcapture::settrigger value pad 0
+#::jcapture::settrigger edge clkena 1
+#::jcapture::settrigger mask clkena 1
+#::jcapture::settrigger value clkena 1
 
 #::jcapture::settrigger edge a 0x000000
 #::jcapture::settrigger mask a 0xff0000

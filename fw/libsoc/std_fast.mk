@@ -29,7 +29,7 @@ init: all
 .phoney: compile
 compile: all
 
-all: $(MAIN_PRJ).bin $(MAIN_PRJ).hex $(MAIN_PRJ).dis
+all: $(MAIN_PRJ).bin $(MAIN_PRJ).hex # $(MAIN_PRJ).dis
 
 clean:
 	-rm *.o

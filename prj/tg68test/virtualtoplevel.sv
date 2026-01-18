@@ -82,17 +82,17 @@ m68k_bridge bridge (
 wire [0:0] jtag_q;
 wire jtag_update;
 wire interrupt = &socket_miscin.ipl;
-cpu_probe #(.outwidth(1)) probe (
-    .clocks(clocks),
-    .m_addr(socket_addr_ctrl),
-    .m_data_in(socket_din),
-    .m_data_out(socket_dout),
-    .m_misc_in(socket_miscin),
-    .m_misc_out(socket_miscout),
-    .extra(interrupt),
-    .update(jtag_update),
-    .q(jtag_q)
-);
+//cpu_probe #(.outwidth(1)) probe (
+//    .clocks(clocks),
+//    .m_addr(socket_addr_ctrl),
+//    .m_data_in(socket_din),
+//    .m_data_out(socket_dout),
+//    .m_misc_in(socket_miscin),
+//    .m_misc_out(socket_miscout),
+//    .extra(interrupt),
+//    .update(jtag_update),
+//    .q(jtag_q)
+//);
 
 reg ledr;
 always @(posedge clocks.svclk) begin

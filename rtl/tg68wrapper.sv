@@ -139,7 +139,8 @@ always @(posedge clocks.sysclk) begin
 
 	case(state)
 		RESET: begin
-				softkick_overlay <= 1'b1;
+				softkick_ena <= 1'b0;
+				softkick_overlay <= 1'b0;
 				uart_rxpending <= 1'b0;
 				cpu_req.req <= 1'b0;
 				clkena <= 1'b0;
@@ -153,7 +154,7 @@ always @(posedge clocks.sysclk) begin
 		DECODE: begin
 				if(slower[0] && !clkena) begin
 					if(sel_fast24 || sel_fast32) begin // We need to handle Fast RAM requests as promptly as possible
-					
+						state <= REQ;  // FIXME - replace with fast path to SDRAM
 					end else begin
 						state <= REQ;	// Handle other requests a cycle later
 					end
@@ -169,7 +170,7 @@ always @(posedge clocks.sysclk) begin
 					case(tg68_addr_d[11:8])
 						4'd0: begin // UART
 								uart_d <= tg68_dout[7:0];
-								tg68_din <= {6'b0,uart_txready,uart_rxpending,uart_q};
+								tg68_din <= {6'b0,uart_rxpending,uart_txready,uart_q};
 								if(tg68_state == STATE_WRITE) begin
 									if(uart_txready) begin
 										uart_stb <= 1'b1;
@@ -179,6 +180,7 @@ always @(posedge clocks.sysclk) begin
 								end else begin
 									uart_rxpending<=1'b0;
 									clkena <= 1'b1;
+									state <= DECODE;
 								end
 
 							end
@@ -247,11 +249,13 @@ always @(posedge clocks.sysclk) begin
 		state <= RESET;
 end
 
+reg jtag_reset_n;
+
 /* verilator lint_off UNSIGNED */
 /* verilator lint_off UNOPTFLAT */
 TG68KdotC_Kernel tg68 (
 	.clk(clocks.sysclk),
-	.nReset(tg68_reset_in),
+	.nReset(tg68_reset_in & jtag_reset_n),
 	.clkena_in(clkena),
 	.data_in(tg68_din),
 	.IPL(socket_miscin.ipl),
@@ -277,6 +281,39 @@ TG68KdotC_Kernel tg68 (
 /* verilator lint_on UNSIGNED */
 /* verilator lint_on UNOPTFLAT */
 
+// JTAG capture module to monitor the cpu bus lines
+localparam capturewidth = 56;
+localparam capturedepth = 12;
+wire [capturewidth-1:0] jtag_d;
+wire [capturewidth-1:0] jtag_q;
+wire jtag_update;
+
+assign jtag_d[1:0] = tg68_state;
+assign jtag_d[2] = tg68_reset_in;
+assign jtag_d[6:3] = state;
+assign jtag_d[38:7] = tg68_addr_d;
+assign jtag_d[54:39] = tg68_din;
+assign jtag_d[55] = clkena;
+
+jcapture #(
+    .capturewidth(capturewidth),
+    .capturedepth(capturedepth),
+    .triggerwidth(capturewidth),
+    .id(16'h68ff)
+) capture_inst (
+	.clk(clocks.sysclk),
+    .stb(1'b1),
+	.reset_n(clocks.reset_n_sys), // clocks.reset_n_sys),
+	.d(jtag_d),
+	.q(jtag_q),
+	.update(jtag_update)
+);
+
+always @(posedge clocks.sysclk) begin
+	jtag_reset_n <= 1'b1;
+	if(jtag_update)
+		jtag_reset_n <= ~jtag_q[0];
+end
 
 endmodule
 

@@ -93,6 +93,8 @@ proc ::jcapture::setup { newtap capture_fields {designid 0x35ac}} {
 	# Set an initial capture width, otherwise the FIFO flush will fail
 	set ::jcapture::capture_width 32
 
+	jcapture::virscan abort
+
 	flush_fifo
 
 	set t [virscan status]

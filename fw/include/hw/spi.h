@@ -2,7 +2,7 @@
 #define SPI_H
 
 #define SPIBASE 0x01000100
-#define HW_SPI(x) *(volatile unsigned int *)(SPIBASE+x)
+#define HW_SPI(x) *(volatile unsigned short *)(SPIBASE+x)
 
 /* SPI registers */
 #define HW_SPI_CS 0x0	/* CS bits are write-only, but bit 15 reads as the SPI busy signal */

@@ -26,6 +26,8 @@ static int sd_size;
 #define cmd_CMD55(x) cmd_write(0xff0077,0)
 #define cmd_CMD58(x) cmd_write(0xff007A,0)
 
+#define SPI_DEBUG
+
 #ifdef SPI_DEBUG
 #define DBG(x) puts(x)
 #define PDBG(x,y) printf(x,y)

@@ -41,7 +41,7 @@ sdram_out sdrout;
 wire spi_cs,spi_copi,spi_cipo,spi_clk;
 wire led_red,led_green,led_blue;
 
-virtualtoplevel vt (
+virtualtoplevel #(.sysclk_freq(1)) vt (
 	.clocks(clocks),
 	.socket_addr_ctrl(addr),
 	.socket_din(din),

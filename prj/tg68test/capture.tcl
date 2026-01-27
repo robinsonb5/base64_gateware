@@ -33,9 +33,9 @@ source ${loc}/../../rtl/jtag/jcapture.tcl
 #::jcapture::settrigger mask clkena 1
 #::jcapture::settrigger value clkena 1
 
-#::jcapture::settrigger edge a 0x000000
-#::jcapture::settrigger mask a 0xff0000
-#::jcapture::settrigger value a 0xfc0000
+#::jcapture::settrigger edge addr 0x000000
+#::jcapture::settrigger mask addr 0xffffff
+#::jcapture::settrigger value addr 0x000154
 
 puts "Recording to cap.vcd"
 

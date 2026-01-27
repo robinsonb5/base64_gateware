@@ -1,7 +1,10 @@
 	section start,code
-	global __bss_start
-	global __bss_end
+	global __bss_start__
+	global __bss_end__
 	global _main
+
+	xref ___CTOR_LIST__
+
 STACKSIZE	equ $1000
 _start:
 	dc.l	0
@@ -15,7 +18,7 @@ __dummyint:
 
 __entry:
 	; Set stack
-	lea		__bss_end,a7
+	lea		__bss_end__,a7
 	add.l	#STACKSIZE,a7
 
 	; Initialise interrupts.
@@ -31,8 +34,8 @@ __entry:
 	move.l	a0,$7C
 
 	; clear bss
-    lea.l   __bss_start,a0
-    move.l  #__bss_end,d0
+    lea.l   __bss_start__,a0
+    move.l  #__bss_end__,d0
     sub.l	a0,d0
     move.l	d0,d1
     lsr.l	#2,d1
@@ -45,7 +48,9 @@ __entry:
 	move.b	#0,(a0)+
 	dbf		d0,.l2
 
-	; Note: no constructors or destructors for ROM code
+	; Execute constructors...
+	lea ___CTOR_LIST__+4,a6 ; First entry is a count
+	bsr .ctordtor
 
 	; Execute main()
 	pea	__args
@@ -53,5 +58,19 @@ __entry:
 	jsr _main
 
 .end:
+	; Execute destructors...
+	lea ___DTOR_LIST__+4,a6 ; First entry is a count
+	bsr .ctordtor
+
 	bra.s	.end
+
+.ctordtor:
+	move.l 	(a6)+,d0
+	beq .done
+	move.l	d0,a0
+	jsr	(a0)
+	bra	.ctordtor
+.done
+	rts	
+
 

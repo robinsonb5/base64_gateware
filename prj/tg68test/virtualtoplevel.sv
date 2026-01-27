@@ -2,7 +2,9 @@ import sdram_pkg::*;
 import base64_m68k_pkg::*;
 import cpu_pkg::*;
 
-module virtualtoplevel (
+module virtualtoplevel # (
+	parameter sysclk_freq = 85
+) (
 	input m68k_clocks        clocks,
 	
 	// m68k socket
@@ -38,26 +40,9 @@ assign sdr_out.cke=1'b0;
 cpu_request cpu_req;
 cpu_response cpu_resp;
 
-
-typedef enum logic[2:0] {
-    RESET,
-    SETDDR,
-	SETPOTGO,
-    READRMB,
-    READLMB,
-    WRITECOLOR0,   
-    WRITELED
-} state_t;
-
-state_t state;
-
-reg [7:0] btns1; // $bfe001 - left button.
-reg [15:0] btns2; // $dff016 - right and middle mouse buttons
-reg [15:0] rgb=0;
-
-reg[19:0] ledcounter;
-
-tg68wrapper cpuwrapper (
+tg68wrapper #(
+	.sysclk_freq(sysclk_freq)
+) cpuwrapper (
 	.clocks(clocks),
 	.cpu_req(cpu_req),
 	.cpu_resp(cpu_resp),

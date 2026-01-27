@@ -123,7 +123,7 @@ DummyIntHandler
 
 ; Interrupt handler table, modified by C code.
 	xdef _IntHandler1
-_IntHandler1	dc.l	DummyIntHandler
+_IntHandler1 dc.l	DummyIntHandler
 _IntHandler2 dc.l	DummyIntHandler
 _IntHandler3 dc.l	DummyIntHandler
 _IntHandler4 dc.l	DummyIntHandler

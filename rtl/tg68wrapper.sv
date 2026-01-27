@@ -3,7 +3,9 @@ import cpu_pkg::*;
 
 `default_nettype none;
 
-module tg68wrapper (
+module tg68wrapper # (
+	parameter sysclk_freq
+) (
 	input m68k_clocks clocks,
 	input cpu_response cpu_resp,
 	output cpu_request cpu_req,
@@ -43,7 +45,6 @@ wire [1:0] tg68_state;
 wire [2:0] tg68_fc;
 wire tg68_reset_out;
 reg  tg68_reset_in;
-reg tg68_reset_s;
 
 // Address decoding
 
@@ -112,7 +113,7 @@ reg  uart_rxpending;
 uart uart_inst (
 	.clk(clocks.sysclk),
 	.reset_n(clocks.reset_n_sys),
-	.clkdiv(16'd737),
+	.clkdiv(16'((sysclk_freq * 10000) / 1152)),
 	.d(uart_d),
 	.d_stb(uart_stb),
 	.q(uart_q),
@@ -123,16 +124,30 @@ uart uart_inst (
 	.txd(txd)
 );
 
+reg jtag_reset_n;
+
 localparam STATE_FETCH = 2'b00;
 localparam STATE_INTERNAL = 2'b01;
 localparam STATE_READ = 2'b10;
 localparam STATE_WRITE = 2'b11;
 
+reg [1:0] tg68_reset_s;
+reg [10:0] reset_debounce_ctr;
+wire reset_debounced = reset_debounce_ctr[10];
+
+always @(posedge clocks.sysclk) begin
+	if(!reset_debounced)
+		reset_debounce_ctr<=reset_debounce_ctr+1;
+
+	tg68_reset_s <= {tg68_reset_s[0],socket_miscin.reset};
+	if(!tg68_reset_s[1])
+		reset_debounce_ctr<=0;
+end
+
 always @(posedge clocks.sysclk) begin
 	clkena <= 1'b0;
 
-	tg68_reset_s <= socket_miscin.reset;
-    tg68_reset_in <= tg68_reset_s;
+    tg68_reset_in <= reset_debounced & jtag_reset_n;
 
 	bootrom_we <= 1'b0;
 	uart_stb <= 1'b0;
@@ -185,6 +200,7 @@ always @(posedge clocks.sysclk) begin
 
 							end
 						4'd1: begin // SPI SD card
+							tg68_din <= 16'b0;
 							clkena <= 1'b1;
 							end
 						default : 
@@ -249,13 +265,12 @@ always @(posedge clocks.sysclk) begin
 		state <= RESET;
 end
 
-reg jtag_reset_n;
 
 /* verilator lint_off UNSIGNED */
 /* verilator lint_off UNOPTFLAT */
 TG68KdotC_Kernel tg68 (
 	.clk(clocks.sysclk),
-	.nReset(tg68_reset_in & jtag_reset_n),
+	.nReset(tg68_reset_in),
 	.clkena_in(clkena),
 	.data_in(tg68_din),
 	.IPL(socket_miscin.ipl),

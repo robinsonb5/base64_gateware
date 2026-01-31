@@ -1,19 +1,21 @@
 SCUBA, Version Diamond (64-bit) 3.11.0.396.4
-Tue Jan 27 14:01:57 2026
-
+Tue Jan 27 14:01:56 2026
+  
 Copyright (c) 1991-1994 by NeoCAD Inc. All rights reserved.
 Copyright (c) 1995 AT&T Corp.   All rights reserved.
 Copyright (c) 1995-2001 Lucent Technologies Inc.  All rights reserved.
 Copyright (c) 2001 Agere Systems   All rights reserved.
 Copyright (c) 2002-2019 Lattice Semiconductor Corporation,  All rights reserved.
-
-    Issued command   : /opt/diamond/3.11_x64/ispfpga/bin/lin64/scuba -w -n supervisorclk -lang verilog -synth synplify -bus_exp 7 -bb -arch sa5p00 -type pll -fin 25 -fclkop 87.5 -fclkop_tol 0.0 -fclkos 87.5 -fclkos_tol 0.0 -phases 0 -fclkos2 87.5 -fclkos2_tol 0.0 -phases2 315 -fclkos3 43.75 -fclkos3_tol 0.0 -phases3 0 -phase_cntl STATIC -lock -fb_mode 1 -fdc /home/amr/FPGA/Base64/base64_gateware/pll/ecp5_25MHz_85MHz/supervisorclk/supervisorclk.fdc 
+  
+BEGIN SCUBA Module Synthesis
+  
+    Issued command   : /opt/diamond/3.11_x64/ispfpga/bin/lin64/scuba -w -n supervisorclk -lang verilog -synth synplify -bus_exp 7 -bb -arch sa5p00 -type pll -fin 25 -fclkop 87.5 -fclkop_tol 0.0 -fclkos 87.5 -fclkos_tol 0.0 -phases 0 -fclkos2 87.5 -fclkos2_tol 0.0 -phases2 315 -fclkos3 43.75 -fclkos3_tol 0.0 -phases3 0 -phase_cntl STATIC -lock -fb_mode 1 
     Circuit name     : supervisorclk
     Module type      : pll
     Module Version   : 5.7
     Ports            : 
-	Inputs       : CLKI
-	Outputs      : CLKOP, CLKOS, CLKOS2, CLKOS3, LOCK
+    Inputs       : CLKI
+    Outputs      : CLKOP, CLKOS, CLKOS2, CLKOS3, LOCK
     I/O buffer       : not inserted
     EDIF output      : supervisorclk.edn
     Verilog output   : supervisorclk.v
@@ -21,6 +23,7 @@ Copyright (c) 2002-2019 Lattice Semiconductor Corporation,  All rights reserved.
     Verilog purpose  : for synthesis and simulation
     Bus notation     : big endian
     Report output    : supervisorclk.srp
-    Element Usage    :
-        EHXPLLL : 1
     Estimated Resource Usage:
+  
+END   SCUBA Module Synthesis
+

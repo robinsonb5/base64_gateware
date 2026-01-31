@@ -29,7 +29,7 @@ init: all
 .phoney: compile
 compile: all
 
-all: $(MAIN_PRJ).bin $(MAIN_PRJ).hex # $(MAIN_PRJ).dis
+all: $(MAIN_PRJ).bin $(MAIN_PRJ).hex $(MAIN_PRJ).dis $(MAIN_PRJ)_ROM_byte.vhd
 
 clean:
 	-rm *.o
@@ -54,6 +54,12 @@ $(ROMGEN): $(ROMGENDIR)/romgen.c
 
 %.hex: %.bin $(ROMGEN)
 	$(ROMGEN) -x -z2 $*.bin >$*.hex
+	
+%_ROM_byte.vhd: %.bin $(ROMGEN)
+	sed 's/romtemplate/$*_ROM/' >$*_ROM_byte.vhd <$(ROMGENDIR)/rom_prologue_byte.vhd
+	$(ROMGEN) -z2 $*.bin >>$*_ROM_byte.vhd
+	cat >>$*_ROM_byte.vhd $(ROMGENDIR)/rom_epilogue_byte.vhd
+
 
 $(LINKSCRIPT):
 	$(error Linkscript missing) 

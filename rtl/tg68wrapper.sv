@@ -1,7 +1,7 @@
 import base64_m68k_pkg::*;
 import cpu_pkg::*;
 
-`default_nettype none;
+`default_nettype none
 
 module tg68wrapper # (
 	parameter sysclk_freq
@@ -11,8 +11,17 @@ module tg68wrapper # (
 	output cpu_request cpu_req,
 	input m68k_misc_in socket_miscin, // for IPL, etc.
 	input rxd,
-	output txd
+	output txd,
+	input spi_cipo,
+	output spi_copi,
+	output reg spi_cs,
+	output spi_clk,
+	input reset_btn
 );
+
+// Reset signal controllable over JTAG - set initial state here.
+reg jtag_reset_n = 1'b1;
+
 
 typedef enum logic[3:0] {
 	RESET,
@@ -23,7 +32,8 @@ typedef enum logic[3:0] {
 	WAIT_INTERNAL,
 	PERIPHERAL,
 	FASTRAM,
-	ROM
+	ROM,
+	SPI
 } state_t;
 
 state_t state;
@@ -88,7 +98,9 @@ reg bootrom_we;
 reg  [1:0] bootrom_bs;
 wire [15:1] bootrom_a;
 
-Firmware_ROM rom_inst (
+Firmware_ROM #(
+	.addr_width(15)
+	) rom_inst (
 	.clk(clocks.sysclk),
 	.addr(bootrom_a),
 	.q(bootrom_q),
@@ -124,48 +136,79 @@ uart uart_inst (
 	.txd(txd)
 );
 
-reg jtag_reset_n;
-
 localparam STATE_FETCH = 2'b00;
 localparam STATE_INTERNAL = 2'b01;
 localparam STATE_READ = 2'b10;
 localparam STATE_WRITE = 2'b11;
 
 reg [1:0] tg68_reset_s;
-reg [10:0] reset_debounce_ctr;
+reg [10:0] reset_debounce_ctr=0;
 wire reset_debounced = reset_debounce_ctr[10];
+
+//Temporarily disable reset
 
 always @(posedge clocks.sysclk) begin
 	if(!reset_debounced)
 		reset_debounce_ctr<=reset_debounce_ctr+1;
 
 	tg68_reset_s <= {tg68_reset_s[0],socket_miscin.reset};
-	if(!tg68_reset_s[1])
-		reset_debounce_ctr<=0;
+//	if(!tg68_reset_s[1])
+//		reset_debounce_ctr<=0;
 end
+
+
+// SD card
+
+localparam spi_speed_slow = (sysclk_freq * 10 ) / 4;
+localparam spi_speed_fast = sysclk_freq  / 25;
+reg spi_speed_sel;
+wire [7:0] spi_speed;
+wire spi_busy;
+reg [7:0] spi_d;
+reg spi_d_stb;
+wire [7:0] spi_q;
+
+assign spi_speed = spi_speed_sel ? spi_speed_fast : spi_speed_slow;
+
+spi spi_inst (
+	.clk(clocks.sysclk),
+	.reset_n(clocks.reset_n_sys),
+	.d(spi_d),
+	.d_stb(spi_d_stb),
+	.q(spi_q),
+	.busy(spi_busy),
+	.speed(spi_speed),
+	.copi(spi_copi),
+	.cipo(spi_cipo),
+	.sck(spi_clk)
+);
 
 always @(posedge clocks.sysclk) begin
 	clkena <= 1'b0;
 
-    tg68_reset_in <= reset_debounced & jtag_reset_n;
+    tg68_reset_in <= clocks.reset_n_sys & reset_debounced & jtag_reset_n & reset_btn;
 
 	bootrom_we <= 1'b0;
 	uart_stb <= 1'b0;
 
+	spi_d_stb <= 1'b0;
+
 	case(state)
 		RESET: begin
-				softkick_ena <= 1'b0;
-				softkick_overlay <= 1'b0;
-				uart_rxpending <= 1'b0;
-				cpu_req.req <= 1'b0;
-				clkena <= 1'b0;
-                tg68_reset_in <= 1'b0;
-                bootrom_ena <= 1'b1;
-				state <= INIT;
-			end
+			softkick_ena <= 1'b0;
+			softkick_overlay <= 1'b0;
+			uart_rxpending <= 1'b0;
+			cpu_req.req <= 1'b0;
+			clkena <= 1'b0;
+            tg68_reset_in <= 1'b0;
+            bootrom_ena <= 1'b1;
+			state <= INIT;
+		end
+
 		INIT: begin
 			state <= DECODE;
-			end
+		end
+
 		DECODE: begin
 				if(slower[0] && !clkena) begin
 					if(sel_fast24 || sel_fast32) begin // We need to handle Fast RAM requests as promptly as possible
@@ -175,78 +218,107 @@ always @(posedge clocks.sysclk) begin
 					end
 				end
 			end
+
 		ROM: begin
-				tg68_din <= bootrom_q;
-				clkena <= 1'b1;
-				state <= DECODE;
-			end
+			tg68_din <= bootrom_q;
+			clkena <= 1'b1;
+			state <= DECODE;
+		end
+
 		REQ: begin
-				if(sel_peripherals) begin
-					case(tg68_addr_d[11:8])
-						4'd0: begin // UART
-								uart_d <= tg68_dout[7:0];
-								tg68_din <= {6'b0,uart_rxpending,uart_txready,uart_q};
-								if(tg68_state == STATE_WRITE) begin
-									if(uart_txready) begin
-										uart_stb <= 1'b1;
-										clkena <= 1'b1;
-										state <= DECODE;
-									end
-								end else begin
-									uart_rxpending<=1'b0;
-									clkena <= 1'b1;
-									state <= DECODE;
-								end
-
+			if(sel_peripherals) begin
+				case(tg68_addr_d[11:8])
+				
+					4'd0: begin // UART
+						uart_d <= tg68_dout[7:0];
+						tg68_din <= {6'b0,uart_rxpending,uart_txready,uart_q};
+						if(tg68_state == STATE_WRITE) begin
+							if(uart_txready) begin
+								uart_stb <= 1'b1;
+								clkena <= 1'b1;
+								state <= DECODE;
 							end
-						4'd1: begin // SPI SD card
-							tg68_din <= 16'b0;
+						end else begin
+							uart_rxpending<=1'b0;
 							clkena <= 1'b1;
+							state <= DECODE;
+						end
+
+					end
+
+					4'd1: begin // SPI SD card
+						if(tg68_addr_d[2] && ~spi_busy) begin // Data register
+							spi_d <= tg68_dout[7:0];
+							if(tg68_state == STATE_WRITE)
+								spi_d_stb <= 1'b1;
+							state <= SPI;
+						end else if(~spi_busy) begin // CS register
+							if(tg68_state == STATE_WRITE) begin
+								spi_speed_sel <= tg68_dout[8];
+								spi_cs <= ~tg68_dout[0];
 							end
-						default : 
+							tg68_din <= {spi_busy,15'd0};
 							clkena <= 1'b1;
-					endcase
-				end else if(sel_bootrom) begin
-					bootrom_d <= tg68_dout;
-					bootrom_bs <= {~tg68_uds,~tg68_lds};
-					bootrom_we <= ~tg68_wr;
-					state <= ROM;
-				end else if(sel_autoconfig) begin
+							state <= DECODE;
+						end
+					end
 
-				end else if(sel_kickstart) begin
-		
-				end else begin
-					if(sel_cia && tg68_state == STATE_WRITE) // First write to CIA registers cancels overlay
-						softkick_overlay <= 1'b0;
+					default : begin
+						clkena <= 1'b1;
+						state <= DECODE;
+					end
+				endcase
+			end else if(sel_bootrom) begin
+				bootrom_d <= tg68_dout;
+				bootrom_bs <= {~tg68_uds,~tg68_lds};
+				bootrom_we <= ~tg68_wr;
+				state <= ROM;
+			end else if(sel_autoconfig) begin
 
-					cpu_req.addr <= tg68_addr;
-					cpu_req.d <= tg68_dout;
-					cpu_req.dm <= {~tg68_uds,~tg68_lds};				
-					case(tg68_state)
-						STATE_FETCH: begin // Instruction fetch
-								cpu_req.req<=~cpu_resp.ack;
-								cpu_req.wr <= 1'b0;
-								cpu_req.ifetch <= 1'b1;
-							end
-						STATE_INTERNAL: begin // Internal cycle
-							end
-						STATE_READ: begin // Data read
-								cpu_req.req<=~cpu_resp.ack;
-								cpu_req.wr <= 1'b0;
-								cpu_req.ifetch <= 1'b0;
-							end
-						STATE_WRITE: begin // Data write
-								cpu_req.req<=~cpu_resp.ack;
-								cpu_req.wr <= 1'b1;
-								cpu_req.ifetch <= 1'b0;
-							end			
-					endcase
-					state <= WAIT;
-				end
+			end else if(sel_kickstart) begin
+	
+			end else begin
+				if(sel_cia && tg68_state == STATE_WRITE) // First write to CIA registers cancels overlay
+					softkick_overlay <= 1'b0;
+
+				cpu_req.addr <= tg68_addr;
+				cpu_req.d <= tg68_dout;
+				cpu_req.dm <= {~tg68_uds,~tg68_lds};				
+				case(tg68_state)
+					STATE_FETCH: begin // Instruction fetch
+							cpu_req.req<=~cpu_resp.ack;
+							cpu_req.wr <= 1'b0;
+							cpu_req.ifetch <= 1'b1;
+						end
+					STATE_INTERNAL: begin // Internal cycle
+						end
+					STATE_READ: begin // Data read
+							cpu_req.req<=~cpu_resp.ack;
+							cpu_req.wr <= 1'b0;
+							cpu_req.ifetch <= 1'b0;
+						end
+					STATE_WRITE: begin // Data write
+							cpu_req.req<=~cpu_resp.ack;
+							cpu_req.wr <= 1'b1;
+							cpu_req.ifetch <= 1'b0;
+						end			
+				endcase
+				state <= WAIT;
 			end
+		end
+
 		PERIPHERAL : begin
 		
 		end
+
+		SPI : begin
+			if(!spi_busy) begin
+				tg68_din <= {8'd0,spi_q};
+				clkena <= 1'b1;
+				state <= DECODE;
+			end
+		end
+
 		WAIT: begin
 				if(slower[0] && (cpu_resp.ack==cpu_req.req)) begin
 					tg68_din <= cpu_resp.q;
@@ -254,15 +326,21 @@ always @(posedge clocks.sysclk) begin
 					state <= DECODE;
 				end
 			end
+
 		default :
 			state <= INIT;
+
 	endcase
 
 	if(uart_rxint)
 		uart_rxpending<=1'b1;
 
-	if(!clocks.reset_n_sys)
+	if(!clocks.reset_n_sys) begin
 		state <= RESET;
+		spi_speed_sel <= 1'b0;
+		spi_cs <= 1'b1;
+	end
+
 end
 
 
@@ -297,7 +375,7 @@ TG68KdotC_Kernel tg68 (
 /* verilator lint_on UNOPTFLAT */
 
 // JTAG capture module to monitor the cpu bus lines
-localparam capturewidth = 56;
+localparam capturewidth = 77;
 localparam capturedepth = 12;
 wire [capturewidth-1:0] jtag_d;
 wire [capturewidth-1:0] jtag_q;
@@ -309,6 +387,24 @@ assign jtag_d[6:3] = state;
 assign jtag_d[38:7] = tg68_addr_d;
 assign jtag_d[54:39] = tg68_din;
 assign jtag_d[55] = clkena;
+assign jtag_d[56] = spi_cs;
+assign jtag_d[64:57] = spi_q;
+assign jtag_d[72:65] = spi_speed;
+assign jtag_d[73] = spi_d_stb;
+assign jtag_d[74] = spi_cipo;
+assign jtag_d[75] = spi_copi;
+assign jtag_d[76] = spi_clk;
+
+wire jtag_stb;
+reg [6:0] jtag_stb_limit=0;
+reg [6:0] jtag_stb_ctr;
+assign jtag_stb = ~(|jtag_stb_ctr);
+
+always @(posedge clocks.sysclk) begin
+	jtag_stb_ctr <= jtag_stb_ctr-1;
+	if(jtag_stb)
+		jtag_stb_ctr <= jtag_stb_limit;
+end
 
 jcapture #(
     .capturewidth(capturewidth),
@@ -317,7 +413,7 @@ jcapture #(
     .id(16'h68ff)
 ) capture_inst (
 	.clk(clocks.sysclk),
-    .stb(1'b1),
+    .stb(jtag_stb),
 	.reset_n(clocks.reset_n_sys), // clocks.reset_n_sys),
 	.d(jtag_d),
 	.q(jtag_q),
@@ -325,9 +421,10 @@ jcapture #(
 );
 
 always @(posedge clocks.sysclk) begin
-	jtag_reset_n <= 1'b1;
-	if(jtag_update)
+	if(jtag_update) begin
 		jtag_reset_n <= ~jtag_q[0];
+		jtag_stb_limit <= jtag_q[7:1];
+	end
 end
 
 endmodule

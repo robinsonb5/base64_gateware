@@ -31,7 +31,8 @@ module virtualtoplevel # (
 	
 	// UART
 	input rxd,
-	output txd
+	output txd,
+	input reset_btn
 );
 
 assign sdr_out.cs=1'b1;
@@ -48,7 +49,12 @@ tg68wrapper #(
 	.cpu_resp(cpu_resp),
 	.socket_miscin(socket_miscin),
 	.rxd(rxd),
-	.txd(txd)
+	.txd(txd),
+	.spi_cs(spi_cs),
+	.spi_clk(spi_clk),
+	.spi_copi(spi_copi),
+	.spi_cipo(spi_cipo),
+	.reset_btn(reset_btn)
 );
 
 m68k_bridge bridge (

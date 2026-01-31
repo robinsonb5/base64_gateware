@@ -21,6 +21,7 @@ module supervisorclk (
 	output reg CLKOP,
 	output reg CLKOS,
 	output reg CLKOS2,
+	output reg CLKOS3,
 	output reg LOCK
 );
 

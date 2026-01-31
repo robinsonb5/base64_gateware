@@ -68,13 +68,20 @@ module base64_icesugarpro_top (
 	output [SDRAM_DATA_WIDTH/8-1:0] sdram_dqm,
 	
 	// SD Card
+`ifdef SDCARD_FULL
 	output sd_clk,	// SPI Clk
 	output sd_cmd,	// SPI COPI
 	inout  sd_d0,	// SPI CIPO
 	inout  sd_d1,
 	inout  sd_d2,
 	inout  sd_d3,	// SPI CS
-	
+`else	
+	output spisdcard_clk,
+	output spisdcard_mosi,
+	output spisdcard_cs_n,
+	input spisdcard_miso,
+`endif
+
 	// UART
 	input rxd,
 	output txd
@@ -86,12 +93,20 @@ wire spi_clk;
 wire spi_copi;
 wire spi_cipo;
 wire spi_cs;
+`ifdef SDCARD_FULL
 assign sd_clk = spi_clk;
-assign sd_clk = spi_copi;
+assign sd_cmd = spi_copi;
 assign sd_d3 = spi_cs;
 assign spi_cipo = sd_d0;
-assign {sd_d0,sd_d1,sd_d2}=3'bzzz;
-
+assign sd_d0 = 1'bz;
+assign sd_d1 = 1'bz;
+assign sd_d2 = 1'bz;
+`else
+assign spisdcard_clk = spi_clk;
+assign spisdcard_mosi = spi_copi;
+assign spisdcard_cs_n = spi_cs;
+assign spi_cipo = spisdcard_miso;
+`endif
 
 // SDRAM
 wire sdram_drive_dq;
@@ -182,6 +197,8 @@ assign sdram_cke = sdr_out.cke;
 
 // Instantiate the project
 
+reg jtag_reset_n=1'b1;
+
 virtualtoplevel project (
 	.clocks(clocks),
 	// M68K bus
@@ -204,7 +221,54 @@ virtualtoplevel project (
 	.led_blue(led_blue),
 	// UART
 	.rxd(rxd),
-	.txd(txd)
+	.txd(txd),
+	.reset_btn(jtag_reset_n)
 );
+
+`ifdef COMMENTOUT
+// JTAG capture module to monitor the cpu bus lines
+localparam capturewidth = 4;
+localparam capturedepth = 12;
+wire [capturewidth-1:0] jtag_d;
+wire [capturewidth-1:0] jtag_q;
+wire jtag_update;
+assign jtag_d[0] = spi_cs;
+assign jtag_d[1] = spi_cipo;
+assign jtag_d[2] = spi_copi;
+assign jtag_d[3] = spi_clk;
+
+wire jtag_stb;
+reg [6:0] jtag_stb_limit=0;
+reg [6:0] jtag_stb_ctr;
+assign jtag_stb = ~(|jtag_stb_ctr);
+
+always @(posedge clocks.sysclk) begin
+	jtag_stb_ctr <= jtag_stb_ctr-1;
+	if(jtag_stb)
+		jtag_stb_ctr <= jtag_stb_limit;
+end
+
+jcapture #(
+    .capturewidth(capturewidth),
+    .capturedepth(capturedepth),
+    .triggerwidth(capturewidth),
+    .id(16'h68ff)
+) capture_inst (
+	.clk(clocks.sysclk),
+    .stb(jtag_stb),
+	.reset_n(clocks.reset_n_sys), // clocks.reset_n_sys),
+	.d(jtag_d),
+	.q(jtag_q),
+	.update(jtag_update)
+);
+
+
+always @(posedge clocks.sysclk) begin
+	if(jtag_update) begin
+		jtag_reset_n <= ~jtag_q[0];
+		jtag_stb_limit <= jtag_q[7:1];
+	end
+end
+`endif
 
 endmodule

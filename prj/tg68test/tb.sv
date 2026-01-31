@@ -38,7 +38,8 @@ m68k_misc_out mout;
 sdram_in sdrin;
 sdram_out sdrout;
 
-wire spi_cs,spi_copi,spi_cipo,spi_clk;
+reg spi_cipo=1'b0;
+wire spi_cs,spi_copi,spi_clk;
 wire led_red,led_green,led_blue;
 
 virtualtoplevel #(.sysclk_freq(1)) vt (
@@ -60,6 +61,14 @@ virtualtoplevel #(.sysclk_freq(1)) vt (
 	.rxd(rxd),
 	.txd(txd)
 );
+
+reg spi_clk_d;
+
+always @(posedge clocks.sysclk) begin
+	spi_clk_d <= spi_clk;
+	if(spi_clk && !spi_clk_d)
+		spi_cipo <= ~spi_cipo;
+end
 
 assign min.dtack = 1'b0; // DTACK grounded!
 assign min.vpa = 1'b1;

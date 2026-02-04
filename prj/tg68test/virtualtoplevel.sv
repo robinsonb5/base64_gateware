@@ -35,8 +35,6 @@ module virtualtoplevel # (
 	input reset_btn
 );
 
-assign sdr_out.cs=1'b1;
-assign sdr_out.cke=1'b0;
 
 cpu_request cpu_req;
 cpu_response cpu_resp;
@@ -48,6 +46,8 @@ tg68wrapper #(
 	.cpu_req(cpu_req),
 	.cpu_resp(cpu_resp),
 	.socket_miscin(socket_miscin),
+	.sdr_in(sdr_in),
+	.sdr_out(sdr_out),
 	.rxd(rxd),
 	.txd(txd),
 	.spi_cs(spi_cs),

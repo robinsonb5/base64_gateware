@@ -16,8 +16,8 @@ CoreRevision=5.8
 ModuleName=supervisorclk
 SourceFormat=verilog
 ParameterFileVersion=1.0
-Date=01/27/2026
-Time=14:01:56
+Date=02/03/2026
+Time=22:48:37
 
 [Parameters]
 Verilog=1
@@ -33,25 +33,25 @@ ENABLE_HBW=DISABLED
 REFERENCE=0
 IOBUF=LVDS
 CLKOP_FREQ=87.5
-CLKOP_TOL=0.0
+CLKOP_TOL=5.0
 CLKOP_DIV=7
 CLKOP_ACTUAL_FREQ=87.500000
 CLKOP_MUXA=DISABLED
 CLKOS_Enable=ENABLED
 CLKOS_FREQ=87.5
-CLKOS_TOL=0.0
+CLKOS_TOL=5.0
 CLKOS_DIV=7
 CLKOS_ACTUAL_FREQ=87.500000
 CLKOS_MUXB=DISABLED
 CLKOS2_Enable=ENABLED
 CLKOS2_FREQ=87.5
-CLKOS2_TOL=0.0
+CLKOS2_TOL=5.0
 CLKOS2_DIV=7
 CLKOS2_ACTUAL_FREQ=87.500000
 CLKOS2_MUXC=DISABLED
 CLKOS3_Enable=ENABLED
 CLKOS3_FREQ=43.75
-CLKOS3_TOL=0.0
+CLKOS3_TOL=5.0
 CLKOS3_DIV=14
 CLKOS3_ACTUAL_FREQ=43.750000
 CLKOS3_MUXD=DISABLED
@@ -90,4 +90,4 @@ PLL_LOCK_STK=DISABLED
 PLL_USE_SMI=DISABLED
 
 [Command]
-cmd_line= -w -n supervisorclk -lang verilog -synth synplify -bus_exp 7 -bb -arch sa5p00 -type pll -fin 25 -fclkop 87.5 -fclkop_tol 0.0 -fclkos 87.5 -fclkos_tol 0.0 -phases 0 -fclkos2 87.5 -fclkos2_tol 0.0 -phases2 315 -fclkos3 43.75 -fclkos3_tol 0.0 -phases3 0 -phase_cntl STATIC -lock -fb_mode 1
+cmd_line= -w -n supervisorclk -lang verilog -synth synplify -bus_exp 7 -bb -arch sa5p00 -type pll -fin 25 -fclkop 87.5 -fclkop_tol 5.0 -fclkos 87.5 -fclkos_tol 5.0 -phases 0 -fclkos2 87.5 -fclkos2_tol 5.0 -phases2 315 -fclkos3 43.75 -fclkos3_tol 5.0 -phases3 0 -phase_cntl STATIC -lock -fb_mode 1

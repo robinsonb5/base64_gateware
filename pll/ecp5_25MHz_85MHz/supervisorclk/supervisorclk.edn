@@ -4,9 +4,9 @@
   (keywordMap (keywordLevel 0))
   (status
     (written
-      (timestamp 2026 1 27 14 1 57)
+      (timestamp 2026 2 3 22 48 39)
       (program "SCUBA" (version "Diamond (64-bit) 3.11.0.396.4"))))
-      (comment "/opt/diamond/3.11_x64/ispfpga/bin/lin64/scuba -w -n supervisorclk -lang verilog -synth synplify -bus_exp 7 -bb -arch sa5p00 -type pll -fin 25 -fclkop 87.5 -fclkop_tol 0.0 -fclkos 87.5 -fclkos_tol 0.0 -phases 0 -fclkos2 87.5 -fclkos2_tol 0.0 -phases2 315 -fclkos3 43.75 -fclkos3_tol 0.0 -phases3 0 -phase_cntl STATIC -lock -fb_mode 1 -fdc /home/amr/FPGA/Base64/base64_gateware/pll/ecp5_25MHz_85MHz/supervisorclk/supervisorclk.fdc ")
+      (comment "/opt/diamond/3.11_x64/ispfpga/bin/lin64/scuba -w -n supervisorclk -lang verilog -synth synplify -bus_exp 7 -bb -arch sa5p00 -type pll -fin 25 -fclkop 87.5 -fclkop_tol 5.0 -fclkos 87.5 -fclkos_tol 5.0 -phases 0 -fclkos2 87.5 -fclkos2_tol 5.0 -phases2 315 -fclkos3 43.75 -fclkos3_tol 5.0 -phases3 0 -phase_cntl STATIC -lock -fb_mode 1 -fdc /home/amr/FPGA/Base64/base64_gateware/pll/ecp5_25MHz_85MHz/supervisorclk/supervisorclk.fdc ")
   (library ORCLIB
     (edifLevel 0)
     (technology

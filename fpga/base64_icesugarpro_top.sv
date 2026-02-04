@@ -108,12 +108,6 @@ assign spisdcard_cs_n = spi_cs;
 assign spi_cipo = spisdcard_miso;
 `endif
 
-// SDRAM
-wire sdram_drive_dq;
-wire [15:0] sdram_data;
-assign sdram_dq = sdram_drive_dq ? sdram_data : 16'bzzzzzzzz_zzzzzzzz;
-
-
 // Clocking
 m68k_clocks clocks;
 hostclocks hostclocks (
@@ -199,7 +193,7 @@ assign sdram_cke = sdr_out.cke;
 
 reg jtag_reset_n=1'b1;
 
-virtualtoplevel project (
+virtualtoplevel #(.sysclk_freq(87)) project (
 	.clocks(clocks),
 	// M68K bus
 	.socket_addr_ctrl(address), 

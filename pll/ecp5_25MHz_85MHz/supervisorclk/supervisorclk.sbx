@@ -45,7 +45,7 @@
             <lattice:device>LFE5U-25F-6BG256C</lattice:device>
             <lattice:synthesis>synplify</lattice:synthesis>
             <lattice:date>2026-01-27.14:01:57</lattice:date>
-            <lattice:modified>2026-01-27.14:01:57</lattice:modified>
+            <lattice:modified>2026-02-03.22:48:39</lattice:modified>
             <lattice:diamond>3.11.0.396.4</lattice:diamond>
             <lattice:language>Verilog</lattice:language>
             <lattice:attributes>
@@ -115,7 +115,7 @@
                 </lattice:lpcentry>
                 <lattice:lpcentry>
                     <lattice:lpckey>Date</lattice:lpckey>
-                    <lattice:lpcvalue lattice:resolve="constant">01/27/2026</lattice:lpcvalue>
+                    <lattice:lpcvalue lattice:resolve="constant">02/03/2026</lattice:lpcvalue>
                 </lattice:lpcentry>
                 <lattice:lpcentry>
                     <lattice:lpckey>ModuleName</lattice:lpckey>
@@ -131,7 +131,7 @@
                 </lattice:lpcentry>
                 <lattice:lpcentry>
                     <lattice:lpckey>Time</lattice:lpckey>
-                    <lattice:lpcvalue lattice:resolve="constant">14:01:56</lattice:lpcvalue>
+                    <lattice:lpcvalue lattice:resolve="constant">22:48:37</lattice:lpcvalue>
                 </lattice:lpcentry>
                 <lattice:lpcentry>
                     <lattice:lpckey>VendorName</lattice:lpckey>
@@ -176,7 +176,7 @@
                 </lattice:lpcentry>
                 <lattice:lpcentry>
                     <lattice:lpckey>CLKOP_TOL</lattice:lpckey>
-                    <lattice:lpcvalue lattice:resolve="constant">0.0</lattice:lpcvalue>
+                    <lattice:lpcvalue lattice:resolve="constant">5.0</lattice:lpcvalue>
                 </lattice:lpcentry>
                 <lattice:lpcentry>
                     <lattice:lpckey>CLKOP_TRIM_DELAY</lattice:lpckey>
@@ -216,7 +216,7 @@
                 </lattice:lpcentry>
                 <lattice:lpcentry>
                     <lattice:lpckey>CLKOS2_TOL</lattice:lpckey>
-                    <lattice:lpcvalue lattice:resolve="constant">0.0</lattice:lpcvalue>
+                    <lattice:lpcvalue lattice:resolve="constant">5.0</lattice:lpcvalue>
                 </lattice:lpcentry>
                 <lattice:lpcentry>
                     <lattice:lpckey>CLKOS2_TRIM_DELAY</lattice:lpckey>
@@ -256,7 +256,7 @@
                 </lattice:lpcentry>
                 <lattice:lpcentry>
                     <lattice:lpckey>CLKOS3_TOL</lattice:lpckey>
-                    <lattice:lpcvalue lattice:resolve="constant">0.0</lattice:lpcvalue>
+                    <lattice:lpcvalue lattice:resolve="constant">5.0</lattice:lpcvalue>
                 </lattice:lpcentry>
                 <lattice:lpcentry>
                     <lattice:lpckey>CLKOS3_TRIM_DELAY</lattice:lpckey>
@@ -296,7 +296,7 @@
                 </lattice:lpcentry>
                 <lattice:lpcentry>
                     <lattice:lpckey>CLKOS_TOL</lattice:lpckey>
-                    <lattice:lpcvalue lattice:resolve="constant">0.0</lattice:lpcvalue>
+                    <lattice:lpcvalue lattice:resolve="constant">5.0</lattice:lpcvalue>
                 </lattice:lpcentry>
                 <lattice:lpcentry>
                     <lattice:lpckey>CLKOS_TRIM_DELAY</lattice:lpckey>
@@ -413,7 +413,7 @@
                 <lattice:lpcsection lattice:name="Command"/>
                 <lattice:lpcentry>
                     <lattice:lpckey>cmd_line</lattice:lpckey>
-                    <lattice:lpcvalue lattice:resolve="constant">-w -n supervisorclk -lang verilog -synth synplify -bus_exp 7 -bb -arch sa5p00 -type pll -fin 25 -fclkop 87.5 -fclkop_tol 0.0 -fclkos 87.5 -fclkos_tol 0.0 -phases 0 -fclkos2 87.5 -fclkos2_tol 0.0 -phases2 315 -fclkos3 43.75 -fclkos3_tol 0.0 -phases3 0 -phase_cntl STATIC -lock -fb_mode 1</lattice:lpcvalue>
+                    <lattice:lpcvalue lattice:resolve="constant">-w -n supervisorclk -lang verilog -synth synplify -bus_exp 7 -bb -arch sa5p00 -type pll -fin 25 -fclkop 87.5 -fclkop_tol 5.0 -fclkos 87.5 -fclkos_tol 5.0 -phases 0 -fclkos2 87.5 -fclkos2_tol 5.0 -phases2 315 -fclkos3 43.75 -fclkos3_tol 5.0 -phases3 0 -phase_cntl STATIC -lock -fb_mode 1</lattice:lpcvalue>
                 </lattice:lpcentry>
             </lattice:lpc>
             <lattice:groups/>

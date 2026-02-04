@@ -669,10 +669,10 @@ int LoadFileAbs(const char *fn, unsigned char *buf)
 		{
 			if(!FileReadSector(&file,buf))
 				return(0);
-			FileNextSector(&file,1,0);
-
 			buf+=512;
 			c+=512;
+			if(c<file.size)
+				FileNextSector(&file,1,0);
 		}
 	}
 	else

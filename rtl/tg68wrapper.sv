@@ -1,4 +1,5 @@
 import base64_m68k_pkg::*;
+import sdram_pkg::*;
 import cpu_pkg::*;
 
 `default_nettype none
@@ -10,6 +11,8 @@ module tg68wrapper # (
 	input cpu_response cpu_resp,
 	output cpu_request cpu_req,
 	input m68k_misc_in socket_miscin, // for IPL, etc.
+	input sdram_in sdr_in,
+	output sdram_out sdr_out,
 	input rxd,
 	output txd,
 	input spi_cipo,
@@ -36,7 +39,7 @@ typedef enum logic[3:0] {
 	SPI
 } state_t;
 
-state_t state;
+state_t state=RESET;
 
 reg clkena;
 reg [2:0] slower;
@@ -183,10 +186,49 @@ spi spi_inst (
 	.sck(spi_clk)
 );
 
+// SDRAM 
+
+wire sdram_ready;
+wire sdram_ack;
+wire [15:0] sdram_to_cpu;
+reg sdram_cs;
+reg sdram_we;
+wire [24:0] sdram_addr;
+reg [15:0] sdram_from_cpu;
+reg [1:0] sdram_ds;
+
+assign sdram_addr[18:0] = tg68_addr_d[18:0];
+assign sdram_addr[24:19] = sel_kickoverlay ? 6'h3f :
+                           sel_kickstart ? 6'h3f :
+                           tg68_addr_d[24:19];
+
+sdram #(
+	.sysclk_freq(sysclk_freq)
+) sdram_ctrl (
+	.sd_in(sdr_in),
+	.sd_out(sdr_out),
+
+	.clk(clocks.sysclk),
+	.reset_n(clocks.reset_n_sys),
+	.ready(sdram_ready),
+	.din(sdram_from_cpu),
+	.dout(sdram_to_cpu),
+	.addr(sdram_addr),
+	.ds(sdram_ds),
+	.cs(sdram_cs),
+	.we(sdram_we),
+	.ack(sdram_ack)
+);
+
+// CPU to peripheral bridge state machine
+
+wire initialreset = clocks.reset_n_sys & jtag_reset_n & reset_btn & sdram_ready;
+wire sm_reset = initialreset & reset_debounced;
+
 always @(posedge clocks.sysclk) begin
 	clkena <= 1'b0;
 
-    tg68_reset_in <= clocks.reset_n_sys & reset_debounced & jtag_reset_n & reset_btn;
+    tg68_reset_in <= sm_reset;
 
 	bootrom_we <= 1'b0;
 	uart_stb <= 1'b0;
@@ -195,13 +237,11 @@ always @(posedge clocks.sysclk) begin
 
 	case(state)
 		RESET: begin
-			softkick_ena <= 1'b0;
-			softkick_overlay <= 1'b0;
 			uart_rxpending <= 1'b0;
 			cpu_req.req <= 1'b0;
 			clkena <= 1'b0;
             tg68_reset_in <= 1'b0;
-            bootrom_ena <= 1'b1;
+            sdram_cs <= 1'b0;
 			state <= INIT;
 		end
 
@@ -210,14 +250,30 @@ always @(posedge clocks.sysclk) begin
 		end
 
 		DECODE: begin
-				if(slower[0] && !clkena) begin
-					if(sel_fast24 || sel_fast32) begin // We need to handle Fast RAM requests as promptly as possible
-						state <= REQ;  // FIXME - replace with fast path to SDRAM
-					end else begin
-						state <= REQ;	// Handle other requests a cycle later
-					end
+			if(slower[0] && !clkena) begin
+				if(tg68_state == STATE_INTERNAL) begin
+					clkena <= 1'b1;
+					state <= WAIT_INTERNAL;
+				end else if(sel_fast24 || sel_fast32) begin // We need to handle Fast RAM requests as promptly as possible
+					sdram_we <= tg68_state == STATE_WRITE ? 1'b1 : 1'b0;
+					sdram_from_cpu <= tg68_dout;
+					sdram_ds <= {tg68_uds,tg68_lds};
+					sdram_cs <= 1'b1;
+					state <= FASTRAM;
+				end else begin
+					state <= REQ;	// Handle other requests a cycle later
 				end
 			end
+		end
+		
+		FASTRAM : begin
+			if(sdram_ack) begin
+				tg68_din <= sdram_to_cpu;
+				sdram_cs <= 1'b0;
+				clkena <= 1'b1;
+				state <= DECODE;
+			end
+		end
 
 		ROM: begin
 			tg68_din <= bootrom_q;
@@ -263,6 +319,15 @@ always @(posedge clocks.sysclk) begin
 						end
 					end
 
+					4'd2 : begin // Control register
+						if(tg68_addr_d[2]==1'b0) begin
+							bootrom_ena <= tg68_dout[0];
+							softkick_ena <= tg68_dout[1];
+							clkena <= 1'b1;
+							state <= RESET;
+						end
+					end
+
 					default : begin
 						clkena <= 1'b1;
 						state <= DECODE;
@@ -275,8 +340,11 @@ always @(posedge clocks.sysclk) begin
 				state <= ROM;
 			end else if(sel_autoconfig) begin
 
-			end else if(sel_kickstart) begin
-	
+			end else if(sel_kickoverlay || sel_kickstart) begin
+				sdram_we <= 1'b0;
+				sdram_ds <= 2'b00;
+				sdram_cs <= 1'b1;
+				state <= FASTRAM;
 			end else begin
 				if(sel_cia && tg68_state == STATE_WRITE) // First write to CIA registers cancels overlay
 					softkick_overlay <= 1'b0;
@@ -320,12 +388,15 @@ always @(posedge clocks.sysclk) begin
 		end
 
 		WAIT: begin
-				if(slower[0] && (cpu_resp.ack==cpu_req.req)) begin
-					tg68_din <= cpu_resp.q;
-					clkena <=1'b1;
-					state <= DECODE;
-				end
+			if(slower[0] && (cpu_resp.ack==cpu_req.req)) begin
+				tg68_din <= cpu_resp.q;
+				clkena <=1'b1;
+				state <= DECODE;
 			end
+		end
+
+		WAIT_INTERNAL :
+			state <= DECODE;
 
 		default :
 			state <= INIT;
@@ -335,17 +406,21 @@ always @(posedge clocks.sysclk) begin
 	if(uart_rxint)
 		uart_rxpending<=1'b1;
 
-	if(!clocks.reset_n_sys) begin
+	if(!initialreset) begin
+		bootrom_ena <= 1'b1;
+		softkick_ena <= 1'b0;
+	end	
+
+	if(!sm_reset) begin
 		state <= RESET;
 		spi_speed_sel <= 1'b0;
 		spi_cs <= 1'b1;
+		bootrom_ena <= 1'b1;
+		softkick_overlay <= 1'b1;
 	end
 
 end
 
-
-/* verilator lint_off UNSIGNED */
-/* verilator lint_off UNOPTFLAT */
 TG68KdotC_Kernel tg68 (
 	.clk(clocks.sysclk),
 	.nReset(tg68_reset_in),
@@ -371,11 +446,8 @@ TG68KdotC_Kernel tg68 (
 	.VBR_out()
 );
 
-/* verilator lint_on UNSIGNED */
-/* verilator lint_on UNOPTFLAT */
-
 // JTAG capture module to monitor the cpu bus lines
-localparam capturewidth = 77;
+localparam capturewidth = 76;
 localparam capturedepth = 12;
 wire [capturewidth-1:0] jtag_d;
 wire [capturewidth-1:0] jtag_q;
@@ -387,13 +459,13 @@ assign jtag_d[6:3] = state;
 assign jtag_d[38:7] = tg68_addr_d;
 assign jtag_d[54:39] = tg68_din;
 assign jtag_d[55] = clkena;
-assign jtag_d[56] = spi_cs;
-assign jtag_d[64:57] = spi_q;
-assign jtag_d[72:65] = spi_speed;
-assign jtag_d[73] = spi_d_stb;
-assign jtag_d[74] = spi_cipo;
-assign jtag_d[75] = spi_copi;
-assign jtag_d[76] = spi_clk;
+assign jtag_d[56] = sdr_out.cs;
+assign jtag_d[57] = sdr_out.cas;
+assign jtag_d[58] = sdr_out.ras;
+assign jtag_d[59] = sdr_out.we;
+assign jtag_d[61:60] = sdr_out.ba;
+assign jtag_d[74:62] = sdr_out.a;
+assign jtag_d[75] = bootrom_ena;
 
 wire jtag_stb;
 reg [6:0] jtag_stb_limit=0;

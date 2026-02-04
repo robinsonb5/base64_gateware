@@ -51,6 +51,9 @@
         <Source name="../../rtl/cpu_probe.sv" type="Verilog" type_short="Verilog">
             <Options/>
         </Source>
+        <Source name="../../rtl/sdram.sv" type="Verilog" type_short="Verilog">
+            <Options/>
+        </Source>
         <Source name="../../rtl/tg68wrapper.sv" type="Verilog" type_short="Verilog">
             <Options/>
         </Source>

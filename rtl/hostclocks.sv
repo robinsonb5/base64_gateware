@@ -17,13 +17,14 @@ module hostclocks #(parameter phase=2) (
 
 wire sysclk;
 wire ramclk;
-wire pll_locked;
-clocks clocks (
-	.CLKI(clk2x),
-	.CLKOP(sysclk),
-	.CLKOS(ramclk),
-	.LOCK(pll_locked)
-);
+wire slowclk;
+wire pll_locked=1'b1;
+//clocks clocks (
+//	.CLKI(clk2x),
+//	.CLKOP(sysclk),
+//	.CLKOS(ramclk),
+//	.LOCK(pll_locked)
+//);
 
 assign cpu_clocks.sysclk = sysclk;
 assign cpu_clocks.ramclk = ramclk;
@@ -34,8 +35,9 @@ wire svlocked;
 supervisorclk svclocks (
 	.CLKI(fpgaclk),
 	.CLKOP(svclk),
-	.CLKOS(),
-	.CLKOS2(),
+	.CLKOS(sysclk),
+	.CLKOS2(ramclk),
+	.CLKOS3(slowclk),
 	.LOCK(svlocked)
 );
 assign cpu_clocks.svclk = svclk;

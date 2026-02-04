@@ -11,7 +11,7 @@ module jcapture #(parameter capturewidth=32, parameter capturedepth=9, parameter
 	output reg update
 );
 
-// JTAG Logic capture module with triggers, for Lattice ECP5 / Yosys / GHDL / Trellis / NextPnR flow.
+// JTAG Logic capture module with triggers, for Lattice ECP5 / Yosys / Trellis / NextPnR flow.
 
 // Copyright (c) 2025, 2026 by Alastair M. Robinson
 
@@ -52,6 +52,7 @@ localparam jcapture_ir_capture      = 4'b1000;
 localparam jcapture_ir_capturewidth = 4'b1001;
 localparam jcapture_ir_capturedepth = 4'b1010;
 localparam jcapture_ir_triggerwidth = 4'b1011;
+localparam jcapture_ir_subsample    = 4'b1100;
 localparam jcapture_ir_bypass       = 4'b1111;
 
 
@@ -127,6 +128,43 @@ end
 assign trigger = (|triggers) ? 1'b0 : 1'b1;
 
 
+// Subsampling logic
+
+// Allow the host to select a number of clocks to skip between samples, and also optionally
+// capture on an external strobe signal.
+// When both are selected, the counter won't reset after underflow until the strobe arrives.
+
+reg [6:0] subsample_ctr;
+reg [6:0] subsample_schedule=0;
+reg subsample_stb_sel;
+
+wire subsample_stb = (stb | ~subsample_stb_sel) & ~(|subsample_ctr);
+
+always @(posedge clk) begin
+	if(|subsample_ctr)
+		subsample_ctr <= subsample_ctr - 1;
+	if(subsample_stb)
+		subsample_ctr <= subsample_schedule;
+end
+
+always @(posedge clk) begin
+	if (drupdate) begin
+		case (irfromjtag[3:0])
+			jcapture_ir_subsample : begin
+				subsample_schedule <= drfromjtag[6:0];
+				subsample_stb_sel <= drfromjtag[7];
+			end
+			default :
+				;
+		endcase;
+	end
+	if(!reset_n) begin
+		subsample_schedule <= 7'b0;
+		subsample_stb_sel <= 1'b0;
+	end
+end
+
+
 typedef enum logic [2:0] { STATE_IDLE,STATE_CAPTURE,STATE_FILL,STATE_READ } capstate_t;
 capstate_t capstate;
 reg busy;
@@ -139,9 +177,10 @@ always @(posedge clk) begin
 
 		case (irfromjtag[3:0])
 			jcapture_ir_write : begin
-					q <= drfromjtag;
-					update <= 1'b1;
-				end
+				q <= drfromjtag;
+				update <= 1'b1;
+			end
+
 			jcapture_ir_setleadin :
 				leadin <= drfromjtag[1:0];
 				
@@ -155,25 +194,28 @@ always @(posedge clk) begin
 
 	case(capstate)
 		STATE_CAPTURE : begin
-				if(trigger) begin
-					capstate <= STATE_FILL;
-					leadin <= 2'b00;
-					fifo_wr <= stb;
-				end else begin
-					if(leadin)
-						fifo_wr <= stb;
-				end
+			if(trigger) begin
+				capstate <= STATE_FILL;
+				leadin <= 2'b00;
+				fifo_wr <= subsample_stb;
+			end else begin
+				if(leadin)
+					fifo_wr <= subsample_stb;
 			end
+		end
+		
 		STATE_FILL : begin
-				if(fifo_full)
-					capstate <= STATE_IDLE;
-				else
-					fifo_wr <= stb;
-			end
+			if(fifo_full)
+				capstate <= STATE_IDLE;
+			else
+				fifo_wr <= subsample_stb;
+		end
+		
 		STATE_READ : begin
-				if(fifo_empty)
-					capstate <= STATE_IDLE;
-			end
+			if(fifo_empty)
+				capstate <= STATE_IDLE;
+		end
+		
 		default :
 			capstate <= STATE_IDLE;
 	endcase
@@ -182,8 +224,11 @@ always @(posedge clk) begin
 		case (irfromjtag[3:0])	
 			jcapture_ir_capture : 
 				capstate <= STATE_CAPTURE;
-			jcapture_ir_abort :
+			jcapture_ir_abort : begin
+				fifo_wr <= 1'b1;  // Capture one sample on abort
+				leadin <= 2'b00;
 				capstate <= STATE_IDLE;
+			end
 			default :
 				;
 		endcase

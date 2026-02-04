@@ -1,4 +1,3 @@
-#
 # JCapture utility functions.
 #
 #    Copyright (c) 2025 by Alastair M. Robinson
@@ -58,6 +57,9 @@ set ::jcapture::membernames {
 # Setup function, makes a copy of the fields to be captured, and sets the tap to be used hereafter
 
 proc ::jcapture::setup { newtap capture_fields {designid 0x35ac}} {
+	# Make stdin non-blocking so we can abort captures with a keypress.
+	fconfigure stdin -blocking 0
+
 	set ::jcapture::tap $newtap
 	set ::jcapture::fields ""
 	set cw 0
@@ -92,8 +94,6 @@ proc ::jcapture::setup { newtap capture_fields {designid 0x35ac}} {
 
 	# Set an initial capture width, otherwise the FIFO flush will fail
 	set ::jcapture::capture_width 32
-
-	jcapture::virscan abort
 
 	flush_fifo
 
@@ -132,7 +132,7 @@ proc ::jcapture::setup { newtap capture_fields {designid 0x35ac}} {
 # Virtual IR scan - shifts a value into a register attached to ER1.
 # The index of these commands must match their assigned command codes in the the jcapture package.
 set ::jcapture::commands {
-	"status" "abort" "read" "write" "setleadin" "setmask" "setinvert" "setedge" "capture" "capturewidth" "capturedepth" "triggerwidth"
+	"status" "abort" "read" "write" "setleadin" "setmask" "setinvert" "setedge" "capture" "capturewidth" "capturedepth" "triggerwidth" "subsample"
 }
 
 proc ::jcapture::virscan {{cmd status}} {
@@ -178,6 +178,7 @@ set ::jcapture::cmd_capture 0x8
 set ::jcapture::cmd_capturewidth 0x9
 set ::jcapture::cmd_capturedepth 0xa
 set ::jcapture::cmd_triggerwidth 0xb
+set ::jcapture::cmd_subsample 0xc
 
 # Flag definitions
 set ::jcapture::flag_busy 0x1
@@ -196,8 +197,19 @@ proc ::jcapture::wait_fifobusy { } {
 # Wait for the FIFO to fill 
 proc ::jcapture::wait_fifofull { } {
 	set status [virscan status]
+	set done 0
 	puts "FIFO status $status (Waiting for flag_full: $::jcapture::flag_full)"
-	while {[expr "0x$status & $::jcapture::flag_full"] == 0 } {
+	puts "Press enter to abort"
+	while {$done == 0 } {
+		if {[expr "0x$status & $::jcapture::flag_full"] == $::jcapture::flag_full} {
+			set done 1
+		}
+		set line [read stdin]
+		if {[string length $line] > 0} {
+			puts "Aborting"
+			::jcapture::virscan abort
+			set done 1
+		}
 		set status [virscan status]
 	}
 	wait_fifobusy
@@ -345,6 +357,11 @@ proc ::jcapture::fifo_to_vcd { chan } {
 proc ::jcapture::flush_fifo { } {
 	puts "Flushing FIFO..."
 	set status [virscan status]
+
+	if {[expr "0x$status & $::jcapture::flag_empty"] == 0 } {	
+		jcapture::virscan abort
+	}
+
 	while {[expr "0x$status & $::jcapture::flag_empty"] == 0 } {
 		vdrscan $::jcapture::capture_width 0
 		set status [virscan status]
@@ -424,6 +441,19 @@ proc ::jcapture::settrigger {triggerparam field value} {
 	} else {
 		puts "Unknown trigger parameter $triggerparam"
 	}
+}
+
+
+# Subsampling allows the design to capture a sample every n clocks
+# where n ranges from 0 to 127.
+# If the strobe bit is set, the design will wait for an external strobe
+# before capturing a sample.
+proc ::jcapture::setsubsample {schedule {strobe 1}} {
+	set v [expr "$schedule & 0x7f"]
+	set v [expr "$v | (($strobe & 1) << 7)"]
+	::jcapture::virscan subsample
+	::jcapture::vdrscan $::jcapture::capture_width $v
+	puts "Setting subsample to $v"
 }
 
 

@@ -37,9 +37,13 @@ source ${loc}/../../rtl/jtag/jcapture.tcl
 
 ::jcapture::setup target.tap $capture_fields $projectid
 
-::jcapture::settrigger edge reset_n 1
-::jcapture::settrigger mask reset_n 1
-::jcapture::settrigger value reset_n 1
+# Ensure device is in reset
+
+sendreset 1
+
+#::jcapture::settrigger edge reset_n 1
+#::jcapture::settrigger mask reset_n 1
+#::jcapture::settrigger value reset_n 1
 
 ::jcapture::settrigger edge clkena 0
 ::jcapture::settrigger mask clkena 1
@@ -72,6 +76,8 @@ puts "Recording to cap.vcd"
 	set chan [::jcapture::create_vcd cap.vcd 0]
 	::jcapture::setleadin 1
 	::jcapture::capture
+	# Release reset, 
+ 	sendreset 0x0
 	::jcapture::wait_fifofull
 	::jcapture::fifo_to_vcd $chan 
 

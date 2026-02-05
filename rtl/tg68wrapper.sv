@@ -91,6 +91,7 @@ wire sel_kickoverlay = tg68_addr_d[31:16] == 16'h0000 && softkick_ena && softkic
 wire sel_kickstart = tg68_addr_d[31:20] == 12'h00f && tg68_addr_d[19]==1'b1 && softkick_ena ? 1'b1 : 1'b0;
 wire sel_cia = tg68_addr_d[31:16] == 16'h00bf ? 1'b1 : 1'b0;
 wire sel_peripherals = tg68_addr_d[31:24] == 8'h01 ? 1'b1 : 1'b0;
+wire sel_serdat = tg68_addr_d[31:0] == 32'h00dff030 ? 1'b1 : 1'b0;
 
 // Boot ROM
 
@@ -155,8 +156,8 @@ always @(posedge clocks.sysclk) begin
 		reset_debounce_ctr<=reset_debounce_ctr+1;
 
 	tg68_reset_s <= {tg68_reset_s[0],socket_miscin.reset};
-//	if(!tg68_reset_s[1])
-//		reset_debounce_ctr<=0;
+	if(!tg68_reset_s[1])
+		reset_debounce_ctr<=0;
 end
 
 
@@ -224,6 +225,9 @@ sdram #(
 
 wire initialreset = clocks.reset_n_sys & jtag_reset_n & reset_btn & sdram_ready;
 wire sm_reset = initialreset & reset_debounced;
+
+reg jtag_romsel_stb;
+reg jtag_romsel;
 
 always @(posedge clocks.sysclk) begin
 	clkena <= 1'b0;
@@ -320,7 +324,7 @@ always @(posedge clocks.sysclk) begin
 					end
 
 					4'd2 : begin // Control register
-						if(tg68_addr_d[2]==1'b0) begin
+						if(tg68_state == STATE_WRITE && tg68_addr_d[2]==1'b0) begin
 							bootrom_ena <= tg68_dout[0];
 							softkick_ena <= tg68_dout[1];
 							clkena <= 1'b1;
@@ -369,6 +373,10 @@ always @(posedge clocks.sysclk) begin
 							cpu_req.req<=~cpu_resp.ack;
 							cpu_req.wr <= 1'b1;
 							cpu_req.ifetch <= 1'b0;
+							if(sel_serdat) begin
+								uart_d <= tg68_dout[7:0];
+								uart_stb <= 1'b1;
+							end
 						end			
 				endcase
 				state <= WAIT;
@@ -411,11 +419,16 @@ always @(posedge clocks.sysclk) begin
 		softkick_ena <= 1'b0;
 	end	
 
+	if(jtag_romsel_stb) begin
+		softkick_ena <= jtag_romsel;
+		bootrom_ena <= 1'b0;
+		state <= RESET;
+	end
+
 	if(!sm_reset) begin
 		state <= RESET;
 		spi_speed_sel <= 1'b0;
 		spi_cs <= 1'b1;
-		bootrom_ena <= 1'b1;
 		softkick_overlay <= 1'b1;
 	end
 
@@ -493,9 +506,14 @@ jcapture #(
 );
 
 always @(posedge clocks.sysclk) begin
+	jtag_romsel_stb <= 1'b0;
 	if(jtag_update) begin
 		jtag_reset_n <= ~jtag_q[0];
-		jtag_stb_limit <= jtag_q[7:1];
+		if(jtag_q[1]) begin
+			jtag_romsel <= jtag_q[2];
+			jtag_romsel_stb <= 1'b1;
+		end
+		jtag_stb_limit <= jtag_q[9:3];
 	end
 end
 

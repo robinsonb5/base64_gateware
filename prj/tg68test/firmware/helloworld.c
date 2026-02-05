@@ -11,8 +11,12 @@
 #define HW_SYS_ROMCTRL_SOFTKICK 2
 
 
-void Boot() {
+void BootSoftKick() {
 	HW_SYS(HW_SYS_ROMCTRL) = HW_SYS_ROMCTRL_SOFTKICK;	/* Unmap Boot ROM, map softkick and reset */
+}
+
+void BootStock() {
+	HW_SYS(HW_SYS_ROMCTRL) = 0;	/* Unmap Boot ROM and reset */
 }
 
 #define MAXMEMBIT 25
@@ -78,21 +82,26 @@ void _INIT_1_MemCheck(void)
 int LoadROM(const char *fn) {
 	int result=0;
 	unsigned char *romaddr=(unsigned char *)0x05f80000;
-	if(FilesystemPresent()
+	if(FilesystemPresent())
 		result=LoadFileAbs(fn,romaddr);
 	else
 		printf("No filesystem present\n");
 	return(result);
 }
 
+volatile unsigned char *ciaapra = (volatile unsigned char *)0xbfe001;
 
 int main(int argc,char **argv)
 {
 	DIRENTRY *dir=0;
 	int i;
 
-	if(LoadROM("DIAGROM ROM"))
-		Boot();
+	if(LoadROM("DIAGROM ROM")) {
+		if((*ciaapra) & 64)
+			BootStock();
+		else
+			BootSoftKick();
+	}
 	else
 		printf("ROM loading failed\n");
 

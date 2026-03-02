@@ -97,6 +97,7 @@ int main(int argc,char **argv)
 	int i;
 
 	if(LoadROM("DIAGROM ROM")) {
+//	if(LoadROM("KICK    ROM")) {
 		if((*ciaapra) & 64)
 			BootStock();
 		else

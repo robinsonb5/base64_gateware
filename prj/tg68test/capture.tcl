@@ -14,7 +14,7 @@ set capture_fields {
 	{ reset_n 1 }
 	{ state 4 }
 	{ addr 32 }
-	{ din 16 }
+	{ dout 16 }
 	{ clkena 1 }
 	{ sd_ca 1 }
 	{ sd_cas 1 }
@@ -45,17 +45,21 @@ sendreset 1
 #::jcapture::settrigger mask reset_n 1
 #::jcapture::settrigger value reset_n 1
 
-::jcapture::settrigger edge clkena 0
+::jcapture::settrigger edge clkena 1
 ::jcapture::settrigger mask clkena 1
 ::jcapture::settrigger value clkena 1
 
 ::jcapture::settrigger edge addr 0x00000000
-::jcapture::settrigger mask addr 0xffffffff
-::jcapture::settrigger value addr 0x01000200
+::jcapture::settrigger mask addr 0xffffff00
+::jcapture::settrigger value addr 0xffffffff
 
-#::jcapture::settrigger edge cpustate 0
-#::jcapture::settrigger mask cpustate 3
-#::jcapture::settrigger value cpustate 3
+#::jcapture::settrigger edge dout 0x0000
+#::jcapture::settrigger mask dout 0xffff
+#::jcapture::settrigger value dout 0x0fff
+
+::jcapture::settrigger edge cpustate 0
+::jcapture::settrigger mask cpustate 3
+::jcapture::settrigger value cpustate 2
 
 #::jcapture::settrigger edge sd_cas 0
 #::jcapture::settrigger mask  sd_cas 1
@@ -69,15 +73,15 @@ sendreset 1
 #::jcapture::settrigger mask bootrom_ena 1
 #::jcapture::settrigger value bootrom_ena 0
 
-::jcapture::setsubsample 0 0
+::jcapture::setsubsample 0
 
 puts "Recording to cap.vcd"
 
 	set chan [::jcapture::create_vcd cap.vcd 0]
-	::jcapture::setleadin 1
+	::jcapture::setleadin 3
 	::jcapture::capture
 	# Release reset, 
- 	sendreset 0x0
+ 	sendreset 0x2
 	::jcapture::wait_fifofull
 	::jcapture::fifo_to_vcd $chan 
 

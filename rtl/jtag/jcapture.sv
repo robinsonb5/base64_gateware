@@ -131,14 +131,16 @@ assign trigger = (|triggers) ? 1'b0 : 1'b1;
 // Subsampling logic
 
 // Allow the host to select a number of clocks to skip between samples, and also optionally
-// capture on an external strobe signal.
-// When both are selected, the counter won't reset after underflow until the strobe arrives.
+// wait for either a trigger or an external strobe signal between successive samples.
+// When trigger or strobe are selected, the counter won't reset after underflow until
+// the strobe /trigger arrives.
 
-reg [6:0] subsample_ctr;
-reg [6:0] subsample_schedule=0;
+reg [5:0] subsample_ctr;
+reg [5:0] subsample_schedule=0;
 reg subsample_stb_sel;
+reg subsample_trigger_sel;
 
-wire subsample_stb = (stb | ~subsample_stb_sel) & ~(|subsample_ctr);
+wire subsample_stb = (trigger | ~subsample_trigger_sel) & (stb | ~subsample_stb_sel) & ~(|subsample_ctr);
 
 always @(posedge clk) begin
 	if(|subsample_ctr)
@@ -151,7 +153,8 @@ always @(posedge clk) begin
 	if (drupdate) begin
 		case (irfromjtag[3:0])
 			jcapture_ir_subsample : begin
-				subsample_schedule <= drfromjtag[6:0];
+				subsample_schedule <= drfromjtag[5:0];
+				subsample_trigger_sel <= drfromjtag[6];
 				subsample_stb_sel <= drfromjtag[7];
 			end
 			default :

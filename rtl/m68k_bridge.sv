@@ -21,6 +21,8 @@ typedef enum logic[3:0] {
 
 m68k_state state;
 
+reg reset_pending;
+
 always @(posedge clks.sysclk) begin
 	case(state)
 		RESET: begin
@@ -49,19 +51,23 @@ always @(posedge clks.sysclk) begin
 				// STATE 0 (posedge):
 				// The read cycle starts in state 0 (S0). The processor places valid function
 				// codes on FC0–FC2 and drives R/W high to identify a read cycle.
-				if(clks.clk7_en_p && (cpu_req.req!=cpu_resp.ack)) begin
-					m_misc_out.fc<={cpu_req.supervisor,cpu_req.ifetch,~cpu_req.ifetch};
+				if(clks.clk7_en_p) begin
 					m_addr.rw<= 1'b1;
 					m_addr.as<=1'b1;
 					m_addr.uds<=1'b1;
 					m_addr.lds<=1'b1;
-					m_addr.a_en<=1'b1;
+					m_addr.a_en<=1'b0;
 					m_addr.drive<=1'b0; // Address bus still needs to be high-z.
 					m_data_out.drive<=1'b0;
 					m_data_out.dq_en<=1'b0; // Data bus high-z
+				end
+
+				if(clks.clk7_en_p && (cpu_req.req!=cpu_resp.ack)) begin
+					m_misc_out.fc<={cpu_req.supervisor,cpu_req.ifetch,~cpu_req.ifetch};
+					m_addr.a_en<=1'b1;
 					state <= S1;
 				end
-		
+
 			end
 			
 		S1: begin
@@ -197,10 +203,11 @@ always @(posedge clks.sysclk) begin
 
 	endcase
 
-	if(!clks.reset_n_sys) begin
+	if((!clks.reset_n_sys) || (!cpu_req.reset)) begin
 		state <= RESET;
 		cpu_resp.ack <= 1'b0;
 	end
+
 end
 
 always @(posedge clks.sysclk) begin

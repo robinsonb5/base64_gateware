@@ -448,9 +448,12 @@ proc ::jcapture::settrigger {triggerparam field value} {
 # where n ranges from 0 to 127.
 # If the strobe bit is set, the design will wait for an external strobe
 # before capturing a sample.
-proc ::jcapture::setsubsample {schedule {strobe 1}} {
-	set v [expr "$schedule & 0x7f"]
-	set v [expr "$v | (($strobe & 1) << 7)"]
+proc ::jcapture::setsubsample {schedule {mode ""} {mode2 ""} } {
+	set triggermode 0
+	if {$mode=="strobe" || $mode2=="strobe"} {set triggermode 0x80}
+	if {$mode=="trigger" || $mode2=="trigger"} {set triggermode [expr $triggermode | 0x40]}
+    puts "Trigger mode: $triggermode"
+	set v [expr "$triggermode | ($schedule & 0x3f)"]
 	::jcapture::virscan subsample
 	::jcapture::vdrscan $::jcapture::capture_width $v
 	puts "Setting subsample to $v"

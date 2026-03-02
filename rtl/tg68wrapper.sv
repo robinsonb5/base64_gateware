@@ -85,10 +85,11 @@ always @(posedge clocks.sysclk)
 reg softkick_ena;
 reg softkick_overlay;
 
+wire sel_slowram = tg68_addr_d[31:20] == 12'h00c ? 1'b1 : 1'b0;
 wire sel_autoconfig = tg68_addr_d[31:16] == 16'h00b8 ? 1'b1 : 1'b0;
 wire sel_bootrom = tg68_addr_d[31:16] == 16'h0000 && bootrom_ena ? 1'b1 : 1'b0;
 wire sel_kickoverlay = tg68_addr_d[31:16] == 16'h0000 && softkick_ena && softkick_overlay ? 1'b1 : 1'b0;
-wire sel_kickstart = tg68_addr_d[31:20] == 12'h00f && tg68_addr_d[19]==1'b1 && softkick_ena ? 1'b1 : 1'b0;
+wire sel_kickstart = (tg68_addr_d[31:20] == 12'hfff || tg68_addr_d[31:20] == 12'h00f) && tg68_addr_d[19]==1'b1 && softkick_ena ? 1'b1 : 1'b0;
 wire sel_cia = tg68_addr_d[31:16] == 16'h00bf ? 1'b1 : 1'b0;
 wire sel_peripherals = tg68_addr_d[31:24] == 8'h01 ? 1'b1 : 1'b0;
 wire sel_serdat = tg68_addr_d[31:0] == 32'h00dff030 ? 1'b1 : 1'b0;
@@ -229,8 +230,14 @@ wire sm_reset = initialreset & reset_debounced;
 reg jtag_romsel_stb;
 reg jtag_romsel;
 
+reg cpureset_d;
+
 always @(posedge clocks.sysclk) begin
 	clkena <= 1'b0;
+
+	cpureset_d <= tg68_reset_out;
+
+	cpu_req.reset <= jtag_reset_n & (tg68_reset_out | ~cpureset_d); // We need to avoid a feedback loop on cpu-triggered resets
 
     tg68_reset_in <= sm_reset;
 
@@ -343,6 +350,13 @@ always @(posedge clocks.sysclk) begin
 				bootrom_we <= ~tg68_wr;
 				state <= ROM;
 			end else if(sel_autoconfig) begin
+
+
+			end else if(sel_slowram) begin // Temporarily disable slowram
+
+				tg68_din <= 16'hffff;
+				clkena <= 1'b1;
+				state <= DECODE;
 
 			end else if(sel_kickoverlay || sel_kickstart) begin
 				sdram_we <= 1'b0;
@@ -470,7 +484,7 @@ assign jtag_d[1:0] = tg68_state;
 assign jtag_d[2] = tg68_reset_in;
 assign jtag_d[6:3] = state;
 assign jtag_d[38:7] = tg68_addr_d;
-assign jtag_d[54:39] = tg68_din;
+assign jtag_d[54:39] = tg68_dout;
 assign jtag_d[55] = clkena;
 assign jtag_d[56] = sdr_out.cs;
 assign jtag_d[57] = sdr_out.cas;
@@ -480,15 +494,12 @@ assign jtag_d[61:60] = sdr_out.ba;
 assign jtag_d[74:62] = sdr_out.a;
 assign jtag_d[75] = bootrom_ena;
 
-wire jtag_stb;
-reg [6:0] jtag_stb_limit=0;
-reg [6:0] jtag_stb_ctr;
-assign jtag_stb = ~(|jtag_stb_ctr);
-
+/* The capture happens one clock after trigger conditions are met.
+   Delaying the clkena stb by a couple of cycles means the data
+   from TG68 should have stabilised. */
+reg [2:0] jtag_stb;
 always @(posedge clocks.sysclk) begin
-	jtag_stb_ctr <= jtag_stb_ctr-1;
-	if(jtag_stb)
-		jtag_stb_ctr <= jtag_stb_limit;
+	jtag_stb <= {clkena,jtag_stb[2:1]};
 end
 
 jcapture #(
@@ -498,7 +509,7 @@ jcapture #(
     .id(16'h68ff)
 ) capture_inst (
 	.clk(clocks.sysclk),
-    .stb(jtag_stb),
+    .stb(jtag_stb[0]),
 	.reset_n(clocks.reset_n_sys), // clocks.reset_n_sys),
 	.d(jtag_d),
 	.q(jtag_q),
@@ -513,7 +524,6 @@ always @(posedge clocks.sysclk) begin
 			jtag_romsel <= jtag_q[2];
 			jtag_romsel_stb <= 1'b1;
 		end
-		jtag_stb_limit <= jtag_q[9:3];
 	end
 end
 

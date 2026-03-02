@@ -13,6 +13,7 @@ package cpu_pkg;
 		bit [cpu_data_width/8-1:0] dm;
 		bit ifetch;
 		bit supervisor;
+		bit reset;
 	} cpu_request;
 	
 	typedef struct {

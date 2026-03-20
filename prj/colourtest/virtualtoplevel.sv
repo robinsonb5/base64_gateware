@@ -4,7 +4,7 @@ import cpu_pkg::*;
 
 `default_nettype none
 
-module virtualtoplevel (
+module virtualtoplevel #(parameter sysclk_freq) (
 	input m68k_clocks        clocks,
 	
 	// m68k socket
@@ -31,7 +31,8 @@ module virtualtoplevel (
 	
 	// UART
 	input rxd,
-	output txd
+	output txd,
+	input reset_btn
 );
 
 assign sdr_out.cs=1'b1;

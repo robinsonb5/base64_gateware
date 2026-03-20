@@ -42,6 +42,8 @@ set ::jcapture::devices {
 	{ 0x43651093 0x22 0x23 {Kintex 7}}
 }
 
+set ::jcapture::irsize 4
+
 set ::jcapture::tap ""
 set ::jcapture::fields ""
 set ::jcapture::capture_width 0
@@ -92,35 +94,32 @@ proc ::jcapture::setup { newtap capture_fields {designid 0x35ac}} {
 		exit
 	}
 
-	# Set an initial capture width, otherwise the FIFO flush will fail
-	set ::jcapture::capture_width 32
-
-	flush_fifo
-
-	set t [virscan status]
-	scan $t %x t
-	set t [expr {$t >> 4}]
-	if {$t != $designid} {
-		puts "ID mismatch - got 0x[format %x $t], expected $designid - exiting."
-		exit	
-	}
-
 	# Fetch capture width, depth and trigger width from design
-	virscan capturewidth
+	command capturewidth
 	set t [vdrscan 32 0]
 	set ::jcapture::capture_width [expr 0x$t]
 
-	virscan capturedepth
+	command capturedepth
 	set t [vdrscan 32 0]
 	set ::jcapture::capture_depth [expr "2**0x$t"]
 
-	virscan triggerwidth
+	command triggerwidth
 	set t [vdrscan 32 0]
 	set ::jcapture::trigger_width [expr 0x$t]
 
 	puts "Capture width: ${::jcapture::capture_width}"
 	puts "Capture depth: ${::jcapture::capture_depth}"
 	puts "Trigger width: ${::jcapture::trigger_width}"
+
+	flush_fifo
+
+	set t [getstatus]
+	scan $t %x t
+	set t [expr {($t >> 4) & 0xffff}]
+	if {$t != $designid} {
+		puts "ID mismatch - got 0x[format %x $t], expected $designid - exiting."
+		exit	
+	}
 	
 	if {$cw != $::jcapture::capture_width} {
 		puts "Warning: field mismatch - $cw bits defined but design contains $::jcapture::capture_width bits"
@@ -131,24 +130,47 @@ proc ::jcapture::setup { newtap capture_fields {designid 0x35ac}} {
 
 # Virtual IR scan - shifts a value into a register attached to ER1.
 # The index of these commands must match their assigned command codes in the the jcapture package.
+set ::jcapture::ircodes {
+	"cmd" "read" "write" "setleadin" "setmask" "setinvert" "setedge" "capturewidth" "capturedepth" "triggerwidth"
+	"subsample" "spare1" "spare2" "spare3" "spare4" "bypass"
+}
+
 set ::jcapture::commands {
-	"status" "abort" "read" "write" "setleadin" "setmask" "setinvert" "setedge" "capture" "capturewidth" "capturedepth" "triggerwidth" "subsample"
+	"nop" "sample" "capture" "abort" "flushfifo"
 }
 
 proc ::jcapture::virscan {{cmd status}} {
 	set v -1
+	for {set i 0} {$i < [llength $::jcapture::ircodes]} {incr i} {
+		if {[lindex $::jcapture::ircodes $i] == $cmd} {
+			set v $i
+			set i [llength $::jcapture::ircodes]
+		}
+	}
+	if {$v>=0} {
+		irscan $::jcapture::tap $::jcapture::vir
+		return [drscan $::jcapture::tap $::jcapture::irsize $v]
+	} else {
+		error "Unknown command $cmd";
+	}
+}
+
+
+proc ::jcapture::command {{comd bypass}} {
+	set v -1
 	for {set i 0} {$i < [llength $::jcapture::commands]} {incr i} {
-		if {[lindex $::jcapture::commands $i] == $cmd} {
+		if {[lindex $::jcapture::commands $i] == $comd} {
 			set v $i
 			set i [llength $::jcapture::commands]
 		}
 	}
 	if {$v>=0} {
-		irscan $::jcapture::tap $::jcapture::vir
-		return [drscan $::jcapture::tap 20 $v]
+		virscan cmd
+		return [vdrscan $::jcapture::capture_width $v]
 	} else {
-		error "Unknown command $cmd";
+		virscan $comd
 	}
+	return 0
 }
 
 
@@ -165,20 +187,6 @@ proc ::jcapture::vdrscan {c v {sp -full}} {
 	return [drscan $::jcapture::tap $c $v -endstate DRPAUSE]	
 }
 
-# Command definitions for the jcapture module
-set ::jcapture::cmd_status 0x0
-set ::jcapture::cmd_abort 0x01
-set ::jcapture::cmd_read 0x02
-set ::jcapture::cmd_write 0x3
-set ::jcapture::cmd_setleadin 0x4
-set ::jcapture::cmd_setmask 0x5
-set ::jcapture::cmd_setinvert 0x6
-set ::jcapture::cmd_setedge 0x7
-set ::jcapture::cmd_capture 0x8
-set ::jcapture::cmd_capturewidth 0x9
-set ::jcapture::cmd_capturedepth 0xa
-set ::jcapture::cmd_triggerwidth 0xb
-set ::jcapture::cmd_subsample 0xc
 
 # Flag definitions
 set ::jcapture::flag_busy 0x1
@@ -188,15 +196,15 @@ set ::jcapture::flag_empty 0x4
 
 # Wait for the busy flag to fall 
 proc ::jcapture::wait_fifobusy { } {
-	set status [virscan status]
+	set status [getstatus]
 	while {[expr "0x$status & $::jcapture::flag_busy"] != 0 } {
-		set status [virscan status]
+		set status [getstatus]
 	}
 }
 
 # Wait for the FIFO to fill 
 proc ::jcapture::wait_fifofull { } {
-	set status [virscan status]
+	set status [getstatus]
 	set done 0
 	puts "FIFO status $status (Waiting for flag_full: $::jcapture::flag_full)"
 	puts "Press enter to abort"
@@ -207,10 +215,11 @@ proc ::jcapture::wait_fifofull { } {
 		set line [read stdin]
 		if {[string length $line] > 0} {
 			puts "Aborting"
-			::jcapture::virscan abort
+			command abort
+			command flushfifo
 			set done 1
 		}
-		set status [virscan status]
+		set status [getstatus]
 	}
 	wait_fifobusy
 }
@@ -218,7 +227,7 @@ proc ::jcapture::wait_fifofull { } {
 # Dump the FIFO contents to the shell window
 proc ::jcapture::dump_fifo { } {
 	set fields [llength $::jcapture::fields]
-	set status [virscan status]
+	set status [getstatus]
 	while {[expr "0x$status & $::jcapture::flag_empty"] == 0 } {
 		set captures ""
 		set lastfield [expr {$fields - 1}]
@@ -241,7 +250,7 @@ proc ::jcapture::dump_fifo { } {
 			puts -nonewline "[lindex $captures [expr {$fields - $i -1 }]] "
 		}
 		puts ""
-		set status [virscan status]
+		set status [getstatus]
 	}
 }
 
@@ -319,13 +328,15 @@ proc ::jcapture::fifo_to_vcd { chan } {
 
 	set vcdi 0
 
-	set status [virscan status]
+	set status [getstatus]
 	while {[expr "0x$status & $::jcapture::flag_empty"] == 0 } {
 		set captures ""
 
 		puts $chan "#$vcdi"
 
 		set lastfield [expr {$fields - 1}]
+
+		virscan read
 
 		for {set i 0 } {$i < $fields} {incr i} {
 			set record [lindex $::jcapture::fields $i]
@@ -344,7 +355,7 @@ proc ::jcapture::fifo_to_vcd { chan } {
 			puts $chan "b[dec2bin [expr 0x$d] $w] $id"
 		}
 
-		set status [virscan status]
+		set status [getstatus]
 
 		incr vcdi
 	}
@@ -356,17 +367,9 @@ proc ::jcapture::fifo_to_vcd { chan } {
 # Silently empty the FIFO.
 proc ::jcapture::flush_fifo { } {
 	puts "Flushing FIFO..."
-	set status [virscan status]
+	command abort
+	command flushfifo
 
-	if {[expr "0x$status & $::jcapture::flag_empty"] == 0 } {	
-		jcapture::virscan abort
-	}
-
-	while {[expr "0x$status & $::jcapture::flag_empty"] == 0 } {
-		vdrscan $::jcapture::capture_width 0
-		set status [virscan status]
-#		puts "$status"
-	}
 	puts "Done"
 }
 
@@ -403,19 +406,27 @@ proc ::jcapture::checktrigger { } {
 	}
 }
 
-proc ::jcapture::capture { } {
-	checktrigger
-	virscan setmask
-	triggerconf 2
-	virscan setedge
-	triggerconf 3
-	virscan setinvert
-	triggerconf 4
-	virscan capture
+
+proc ::jcapture::getstatus { } {
+	command spare1
+	return [vdrscan 28 0]
 }
 
+
+proc ::jcapture::capture { } {
+	checktrigger
+	command setmask
+	triggerconf 2
+	command setedge
+	triggerconf 3
+	command setinvert
+	triggerconf 4
+	command capture
+}
+
+
 proc ::jcapture::setleadin { leadin } {
-	::jcapture::virscan setleadin
+	::jcapture::command setleadin
 	::jcapture::vdrscan $::jcapture::capture_width $leadin
 }
 
@@ -454,8 +465,8 @@ proc ::jcapture::setsubsample {schedule {mode ""} {mode2 ""} } {
 	if {$mode=="trigger" || $mode2=="trigger"} {set triggermode [expr $triggermode | 0x40]}
     puts "Trigger mode: $triggermode"
 	set v [expr "$triggermode | ($schedule & 0x3f)"]
-	::jcapture::virscan subsample
-	::jcapture::vdrscan $::jcapture::capture_width $v
+	command subsample
+	vdrscan $::jcapture::capture_width $v
 	puts "Setting subsample to $v"
 }
 

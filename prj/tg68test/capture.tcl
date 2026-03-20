@@ -1,3 +1,4 @@
+#! ./oocd.sh
 #
 # IceSugarPro demo JTAG script
 #
@@ -9,24 +10,10 @@ scan_chain
 set projectid 0x68ff
 
 # The total number of bits here must match the width defined in jcapture_pkg.vhd
-set capture_fields {
-	{ cpustate 2 }
-	{ reset_n 1 }
-	{ state 4 }
-	{ addr 32 }
-	{ dout 16 }
-	{ clkena 1 }
-	{ sd_ca 1 }
-	{ sd_cas 1 }
-	{ sd_ras 1 }
-	{ sd_we 1 }
-	{ sd_ba 2 }
-	{ sd_a 13 }
-	{ bootrom_ena 1 }
-}
+source ./capturefields.tcl
 
 proc sendreset { v } {
-	::jcapture::virscan write
+	::jcapture::command write
 	::jcapture::vdrscan $::jcapture::capture_width $v
 }
 
@@ -39,7 +26,7 @@ source ${loc}/../../rtl/jtag/jcapture.tcl
 
 # Ensure device is in reset
 
-sendreset 1
+# sendreset 1
 
 #::jcapture::settrigger edge reset_n 1
 #::jcapture::settrigger mask reset_n 1
@@ -49,17 +36,21 @@ sendreset 1
 ::jcapture::settrigger mask clkena 1
 ::jcapture::settrigger value clkena 1
 
-::jcapture::settrigger edge addr 0x00000000
-::jcapture::settrigger mask addr 0xffffff00
-::jcapture::settrigger value addr 0xffffffff
+#::jcapture::settrigger edge uart_rxpending 1
+#::jcapture::settrigger mask uart_rxpending 1
+#::jcapture::settrigger value uart_rxpending 0
+
+#::jcapture::settrigger edge addr 0x00000000
+#::jcapture::settrigger mask addr 0xffffff00
+#::jcapture::settrigger value addr 0xffffffff
 
 #::jcapture::settrigger edge dout 0x0000
 #::jcapture::settrigger mask dout 0xffff
 #::jcapture::settrigger value dout 0x0fff
 
-::jcapture::settrigger edge cpustate 0
-::jcapture::settrigger mask cpustate 3
-::jcapture::settrigger value cpustate 2
+#::jcapture::settrigger edge cpustate 0
+#::jcapture::settrigger mask cpustate 3
+#::jcapture::settrigger value cpustate 2
 
 #::jcapture::settrigger edge sd_cas 0
 #::jcapture::settrigger mask  sd_cas 1
@@ -76,15 +67,17 @@ sendreset 1
 ::jcapture::setsubsample 0
 
 puts "Recording to cap.vcd"
+ 	sendreset 1
 
 	set chan [::jcapture::create_vcd cap.vcd 0]
-	::jcapture::setleadin 3
+	::jcapture::setleadin 0
+
 	::jcapture::capture
 	# Release reset, 
- 	sendreset 0x2
+ 	sendreset 2
 	::jcapture::wait_fifofull
 	::jcapture::fifo_to_vcd $chan 
-
+	puts [::jcapture::getstatus]
 exit
 
 

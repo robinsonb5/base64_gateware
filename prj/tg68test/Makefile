@@ -68,6 +68,7 @@ $(BIT_FILE): $(HDL_FILES_SYNTH) $(FIRMWARE)
 	echo prj_project open ${PROJ_FILE} \; prj_run Export -task Bitgen | $(DIAMOND_PATH)/diamondc
 
 $(FIRMWARE):
+	make -C ../../fw
 	make -C firmware
 
 # Configure FPGA
@@ -81,6 +82,10 @@ pgm: $(BIT_FILE)
 .phony cap:
 cap: $(BIT_FILE)
 	openocd -f ../../fpga/icesugarpro.cfg -f capture.tcl
+
+.phony softkick:
+softkick: $(BIT_FILE)
+	openocd -f ../../fpga/icesugarpro.cfg -f softkick.tcl
 
 # Simulation
 

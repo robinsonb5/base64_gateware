@@ -98,36 +98,39 @@ int main(int argc,char **argv)
 
 	if(LoadROM("DIAGROM ROM")) {
 //	if(LoadROM("KICK    ROM")) {
-		if((*ciaapra) & 64)
-			BootStock();
-		else
-			BootSoftKick();
+//		if((*ciaapra) & 64)
+//			BootStock();
+//		else
+//			BootSoftKick();
 	}
-	else
-		printf("ROM loading failed\n");
+//	else
+//		printf("ROM loading failed\n");
 
 	while(1) {
 		int c=getchar()&(~32);
-		switch(c) {
-			case 'D' :
-				printf("Scanning directory\n");
-				dir=0;
-				while((dir=NextDirEntry(dir==0,0,0)))
-				{
-					if (dir->Name[0] != SLOT_EMPTY && dir->Name[0] != SLOT_DELETED) // valid entry??
+		if(c) {
+			printf("Got character: %d\n",c);
+			switch(c) {
+				case 'D' :
+					printf("Scanning directory\n");
+					dir=0;
+					while((dir=NextDirEntry(dir==0,0,0)))
 					{
-						printf("%s (%s)\n",dir->Name,longfilename);
+						if (dir->Name[0] != SLOT_EMPTY && dir->Name[0] != SLOT_DELETED) // valid entry??
+						{
+							printf("%s (%s)\n",dir->Name,longfilename);
+						}
 					}
-				}
-				break;
+					break;
 
-			case 'S' :
-				printf("SD card size is %d\n",sd_get_size());
-				break;
+				case 'S' :
+					printf("SD card size is %d\n",sd_get_size());
+					break;
 
-			default:
-				putchar(c);
-				break;
+				default:
+					putchar(c);
+					break;
+			}
 		}
 	}
 	return(0);

@@ -39,15 +39,6 @@ wire tck_p,tck_n; // Rising and falling edges of JTAG clock, in sysclk domain
 assign tck_p=tck_s[2:1]==2'b01 ? 1'b1 : 1'b0;
 assign tck_n=tck_s[2:1]==2'b10 ? 1'b1 : 1'b0;
 
-reg capture;
-always @(posedge sysclk) begin
-	if(tck_p) begin
-		if(to_reg.update)
-			capture <= 1'b1;
-		if(to_reg.shift)
-			capture <= 1'b0;
-	end
-end
 
 // As we leave the shift state we latch the previous value of tdi.
 // Without this, we lose the last bit shifted when doing a multi-part
@@ -103,7 +94,8 @@ module vjtag (
 	output jtag_to_reg to_reg1,
 	input tdo1,
 	output jtag_to_reg to_reg2,
-	input tdo2
+	input tdo2,
+	output reset_n
 );
 
 wire jtck,jtdi,jshift,jupdate,jrstn,jce1,jce2;
@@ -121,6 +113,8 @@ jtaggwrapper jtag_inst (
 	.JTDO1(tdo1),
 	.JTDO2(tdo2)
 );
+
+assign reset_n = jrstn;
 
 assign to_reg1.tck = jtck;
 assign to_reg1.tdi = jtdi;

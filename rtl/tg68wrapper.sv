@@ -474,7 +474,7 @@ TG68KdotC_Kernel tg68 (
 );
 
 // JTAG capture module to monitor the cpu bus lines
-localparam capturewidth = 76;
+localparam capturewidth = 63;
 localparam capturedepth = 12;
 wire [capturewidth-1:0] jtag_d;
 wire [capturewidth-1:0] jtag_q;
@@ -482,17 +482,13 @@ wire jtag_update;
 
 assign jtag_d[1:0] = tg68_state;
 assign jtag_d[2] = tg68_reset_in;
-assign jtag_d[6:3] = state;
-assign jtag_d[38:7] = tg68_addr_d;
-assign jtag_d[54:39] = tg68_dout;
-assign jtag_d[55] = clkena;
-assign jtag_d[56] = sdr_out.cs;
-assign jtag_d[57] = sdr_out.cas;
-assign jtag_d[58] = sdr_out.ras;
-assign jtag_d[59] = sdr_out.we;
-assign jtag_d[61:60] = sdr_out.ba;
-assign jtag_d[74:62] = sdr_out.a;
-assign jtag_d[75] = bootrom_ena;
+assign jtag_d[34:3] = tg68_addr_d;
+assign jtag_d[50:35] = tg68_dout;
+assign jtag_d[51] = clkena;
+assign jtag_d[52] = rxd;
+assign jtag_d[53] = uart_rxint;
+assign jtag_d[61:54] = uart_q;
+assign jtag_d[62] = uart_rxpending;
 
 /* The capture happens one clock after trigger conditions are met.
    Delaying the clkena stb by a couple of cycles means the data

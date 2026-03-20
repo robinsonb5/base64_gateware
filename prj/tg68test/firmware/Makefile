@@ -2,7 +2,7 @@
 COMMON_DIR = ../../../fw/libsoc
 
 MAIN_PRJ = Firmware
-MAIN_SRC = helloworld.c
+MAIN_SRC = boot.c
 
 # Commandline options for each tool.
 

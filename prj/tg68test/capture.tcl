@@ -36,9 +36,9 @@ source ${loc}/../../rtl/jtag/jcapture.tcl
 ::jcapture::settrigger mask clkena 1
 ::jcapture::settrigger value clkena 1
 
-#::jcapture::settrigger edge uart_rxpending 1
-#::jcapture::settrigger mask uart_rxpending 1
-#::jcapture::settrigger value uart_rxpending 0
+::jcapture::settrigger edge screenwhite 0
+::jcapture::settrigger mask screenwhite 1
+::jcapture::settrigger value screenwhite 1
 
 #::jcapture::settrigger edge addr 0x00000000
 #::jcapture::settrigger mask addr 0xffffff00

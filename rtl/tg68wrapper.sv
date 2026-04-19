@@ -473,8 +473,16 @@ TG68KdotC_Kernel tg68 (
 	.VBR_out()
 );
 
+reg screenwhite;
+always @(posedge clocks.sysclk) begin
+	if(tg68_addr[23:0] == 24'hdff180 && tg68_dout[11:0] == 12'hfff && clkena==1'b1)
+		screenwhite <= 1'b1;
+	if(!tg68_reset_in)
+		screenwhite <= 1'b0;
+end
+
 // JTAG capture module to monitor the cpu bus lines
-localparam capturewidth = 63;
+localparam capturewidth = 53;
 localparam capturedepth = 12;
 wire [capturewidth-1:0] jtag_d;
 wire [capturewidth-1:0] jtag_q;
@@ -485,10 +493,8 @@ assign jtag_d[2] = tg68_reset_in;
 assign jtag_d[34:3] = tg68_addr_d;
 assign jtag_d[50:35] = tg68_dout;
 assign jtag_d[51] = clkena;
-assign jtag_d[52] = rxd;
-assign jtag_d[53] = uart_rxint;
-assign jtag_d[61:54] = uart_q;
-assign jtag_d[62] = uart_rxpending;
+assign jtag_d[52] = screenwhite;
+
 
 /* The capture happens one clock after trigger conditions are met.
    Delaying the clkena stb by a couple of cycles means the data

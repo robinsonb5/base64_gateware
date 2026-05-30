@@ -64,10 +64,12 @@ always @(posedge clocks.sysclk) begin
     case (state)
         RESET : begin
     		cpu_req.req<=1'b0;
+			cpu_req.reset<=1'b0;
     		rgb<=0;
             state <= SETDDR;
         end
         SETDDR : begin
+			cpu_req.reset<=1'b1;
             if(cpu_resp.ack == cpu_req.req) begin
 	            cpu_req.addr <= 32'hbfe201;
 	            cpu_req.dm<=2'b11;

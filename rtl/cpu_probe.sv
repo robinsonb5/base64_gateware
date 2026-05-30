@@ -31,14 +31,14 @@ jcapture #(
     .capturewidth(capturewidth),
     .capturedepth(capturedepth),
     .triggerwidth(capturewidth),
-    .id(id)
+    .designid(id)
 ) capture_inst (
 	.clk(clocks.sysclk),
     .stb(clocks.clk7_en_p | clocks.clk7_en_n),
 	.reset_n(clocks.reset_n_sys), // clocks.reset_n_sys),
-	.d(jtag_d),
-	.q(jtag_q),
-	.update(jtag_update)
+	.capture_d(jtag_d),
+	.user_q(jtag_q),
+	.user_update(jtag_update)
 );
 
 assign jtag_d[0] = clocks.clk7;

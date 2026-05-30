@@ -42,7 +42,7 @@ set ::jcapture::devices {
 	{ 0x43651093 0x22 0x23 {Kintex 7}}
 }
 
-set ::jcapture::irsize 4
+set ::jcapture::irsize 5
 
 set ::jcapture::tap ""
 set ::jcapture::fields ""
@@ -130,6 +130,7 @@ proc ::jcapture::setup { newtap capture_fields {designid 0x35ac}} {
 
 # Virtual IR scan - shifts a value into a register attached to ER1.
 # The index of these commands must match their assigned command codes in the the jcapture package.
+# These system commands are mapped to bits 3:0 of the ir scan code, with bit 4 clear.
 set ::jcapture::ircodes {
 	"cmd" "read" "write" "setleadin" "setmask" "setinvert" "setedge" "capturewidth" "capturedepth" "triggerwidth"
 	"subsample" "spare1" "spare2" "spare3" "spare4" "bypass"
@@ -140,13 +141,7 @@ set ::jcapture::commands {
 }
 
 proc ::jcapture::virscan {{cmd status}} {
-	set v -1
-	for {set i 0} {$i < [llength $::jcapture::ircodes]} {incr i} {
-		if {[lindex $::jcapture::ircodes $i] == $cmd} {
-			set v $i
-			set i [llength $::jcapture::ircodes]
-		}
-	}
+	set v [lsearch $::jcapture::ircodes $cmd]
 	if {$v>=0} {
 		irscan $::jcapture::tap $::jcapture::vir
 		return [drscan $::jcapture::tap $::jcapture::irsize $v]
@@ -155,15 +150,38 @@ proc ::jcapture::virscan {{cmd status}} {
 	}
 }
 
+# User IR and DR scan
+# User ir codes are transmitted with bit 4 set. Bits 3 to 0 are passed to the
+# user design as the user IR code.
+
+# Empty list of user IR codes. The user design should override this.
+set ::jcapture::usercodes [list]
+
+proc ::jcapture::userir {cmd} {
+	set v [lsearch $::jcapture::usercodes $cmd]
+	if {$v>=0} {
+		# If bit 4 is set the jcapture module treats the lower 4 bits as the user ir code.
+		set v [ expr "$v | 0x10" ]
+		irscan $::jcapture::tap $::jcapture::vir
+		puts "setting ir to $v ($::jcapture::irsize)"
+		return [drscan $::jcapture::tap $::jcapture::irsize $v]
+	} else {
+		error "Unknown command $cmd";
+	}
+}
+
+proc ::jcapture::userdr {data} {
+	return [::jcapture::vdrscan $::jcapture::capture_width $data]
+}
+
+proc ::jcapture::usercmd {cmd data} {
+	::jcapture::userir $cmd
+	::jcapture::userdr $data
+}
+
 
 proc ::jcapture::command {{comd bypass}} {
-	set v -1
-	for {set i 0} {$i < [llength $::jcapture::commands]} {incr i} {
-		if {[lindex $::jcapture::commands $i] == $comd} {
-			set v $i
-			set i [llength $::jcapture::commands]
-		}
-	}
+	set v [lsearch $::jcapture::commands $comd]
 	if {$v>=0} {
 		virscan cmd
 		return [vdrscan $::jcapture::capture_width $v]

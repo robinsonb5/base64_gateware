@@ -1,3 +1,4 @@
+#! ./oocd.sh
 #
 # IceSugarPro demo JTAG script
 #
@@ -42,7 +43,7 @@ source ${loc}/../../rtl/jtag/jcapture.tcl
 ::jcapture::setup target.tap $capture_fields $projectid
 
 ::jcapture::settrigger edge reset_n 1
-::jcapture::settrigger mask reset_n 1
+::jcapture::settrigger mask reset_n 0
 ::jcapture::settrigger value reset_n 1
 
 #::jcapture::settrigger edge rxd 1

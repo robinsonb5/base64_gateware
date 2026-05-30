@@ -224,8 +224,8 @@ sdram #(
 
 // CPU to peripheral bridge state machine
 
-wire initialreset = clocks.reset_n_sys & jtag_reset_n & reset_btn & sdram_ready;
-wire sm_reset = initialreset & reset_debounced;
+wire initialreset = clocks.reset_n_sys & reset_btn & sdram_ready;
+wire sm_reset = initialreset & jtag_reset_n & reset_debounced;
 
 reg jtag_romsel_stb;
 reg jtag_romsel;
@@ -482,6 +482,8 @@ always @(posedge clocks.sysclk) begin
 end
 
 // JTAG capture module to monitor the cpu bus lines
+// Capturewidth must be wide enough to accommodate
+// the command set for remote 
 localparam capturewidth = 53;
 localparam capturedepth = 12;
 wire [capturewidth-1:0] jtag_d;
@@ -504,28 +506,50 @@ always @(posedge clocks.sysclk) begin
 	jtag_stb <= {clkena,jtag_stb[2:1]};
 end
 
+wire [3:0] user_ir;
+
 jcapture #(
     .capturewidth(capturewidth),
     .capturedepth(capturedepth),
     .triggerwidth(capturewidth),
-    .id(16'h68ff)
+    .designid(16'h68ff)
 ) capture_inst (
 	.clk(clocks.sysclk),
     .stb(jtag_stb[0]),
 	.reset_n(clocks.reset_n_sys), // clocks.reset_n_sys),
-	.d(jtag_d),
-	.q(jtag_q),
-	.update(jtag_update)
+	.capture_d(jtag_d),
+	.user_ir(user_ir),
+	.user_ir_update(),
+	.user_d(),
+	.user_q(jtag_q),
+	.user_update(jtag_update)
 );
+
+// Need a way to remotely upload a ROM, which means
+// defining a command set.
+// The command set will then 
+
+localparam usercmd_reset = 4'd0; 
+localparam usercmd_kickselect = 4'd1;
 
 always @(posedge clocks.sysclk) begin
 	jtag_romsel_stb <= 1'b0;
 	if(jtag_update) begin
-		jtag_reset_n <= ~jtag_q[0];
-		if(jtag_q[1]) begin
-			jtag_romsel <= jtag_q[2];
-			jtag_romsel_stb <= 1'b1;
-		end
+		case(user_ir)
+
+			usercmd_reset : begin
+				jtag_reset_n <= ~jtag_q[0];
+			end
+
+			usercmd_kickselect : begin
+				jtag_romsel <= jtag_q[0];
+				jtag_romsel_stb <= 1'b1;
+			end
+
+			default : 
+				;
+
+		endcase
 	end
 end
 

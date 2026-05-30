@@ -249,6 +249,9 @@ proc ::jcapture::dump_fifo { } {
 	while {[expr "0x$status & $::jcapture::flag_empty"] == 0 } {
 		set captures ""
 		set lastfield [expr {$fields - 1}]
+		
+		virscan read
+
 		for {set i 0 } {$i < $fields} {incr i} {
 			set record [lindex $::jcapture::fields $i]
 			set w [lindex $record 1]

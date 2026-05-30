@@ -7,20 +7,20 @@
 // effectively disabling the full / empty logic.
 
 module vjtag_sync_fifo #(parameter fifowidth = 32, parameter fifodepth = 6) (
-	input sysclk,
-	input reset_n,
+	input wire sysclk,
+	input wire reset_n,
 	
 	// Read side
-	input rd_en,
+	input wire rd_en,
 	output reg [fifowidth-1:0] dout,
-	output empty,
+	output wire empty,
 	
 	// Write side
-	input wr_en,
-	input [fifowidth-1:0] din,
-	output full,
+	input wire wr_en,
+	input wire [fifowidth-1:0] din,
+	output wire full,
 	
-	input [1:0] leadin
+	input wire [1:0] leadin
 );
 
 reg [fifowidth-1:0] storage [2**fifodepth];

@@ -1,8 +1,12 @@
 import sdram_pkg::*;
 import base64_m68k_pkg::*;
 
-module virtualtoplevel (
+module virtualtoplevel # (
+	parameter sysclk_freq
+) (
 	input m68k_clocks        clocks,
+	
+	input reset_btn,
 	
 	// m68k socket
 	output m68k_address_ctrl socket_addr_ctrl,
@@ -24,7 +28,10 @@ module virtualtoplevel (
 	// LEDs
 	output led_red,
 	output led_green,
-	output led_blue
+	output led_blue,
+	
+	input rxd,
+	output txd
 );
 
 assign sdr_out.cs=1'b1;
@@ -39,17 +46,19 @@ assign socket_addr_ctrl.rw = 1'b1;
 assign socket_addr_ctrl.uds = 1'b1;
 assign socket_addr_ctrl.lds = 1'b1;
 
+assign txd = 1'b1;
+
 
 // JTAG capture module to monitor the clock lines
 wire [31:0] jtag_d;
 wire [31:0] jtag_q;
 wire jtag_update;
-jcapture #(.id(16'hc10c)) capture_inst (
+jcapture #(.designid(16'hc10c)) capture_inst (
 	.clk(clocks.svclk),
 	.reset_n(1'b1), // clocks.reset_n_sys),
-	.d(jtag_d),
-	.q(jtag_q),
-	.update(jtag_update)
+	.capture_d(jtag_d),
+	.user_q(jtag_q),
+	.user_update(jtag_update)
 );
 
 assign jtag_d[0] = clocks.clk7;

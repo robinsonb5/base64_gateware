@@ -39,7 +39,7 @@ module jcapture #(
 ) (
 	input clk,
 	input reset_n,
-    input stb,
+	input stb,
 	input [capturewidth-1:0] capture_d,
 	output reg [userirwidth-1:0] user_ir,
 	output reg user_ir_update,

@@ -246,14 +246,14 @@ jcapture #(
     .capturewidth(capturewidth),
     .capturedepth(capturedepth),
     .triggerwidth(capturewidth),
-    .id(16'h68ff)
+    .designid(16'h68ff)
 ) capture_inst (
 	.clk(clocks.sysclk),
     .stb(jtag_stb),
 	.reset_n(clocks.reset_n_sys), // clocks.reset_n_sys),
-	.d(jtag_d),
-	.q(jtag_q),
-	.update(jtag_update)
+	.capture_d(jtag_d),
+	.user_q(jtag_q),
+	.user_update(jtag_update)
 );
 
 

@@ -100,7 +100,7 @@ module vjtag (
 
 wire jtck,jtdi,jshift,jupdate,jrstn,jce1,jce2;
 
-jtagg_wrapper jtag_inst (
+jtaggwrapper jtag_inst (
 	.JTCK(jtck),
 	.JTDI(jtdi),
 	.JSHIFT(jshift),

@@ -32,13 +32,53 @@ assign empty = (readptr==writeptr) ? 1'b1 : 1'b0;
 assign full = (leadin==2'b00 && readptr==writeptr_next) ? 1'b1 : 1'b0;
 
 
+// Compare and count logic
+
+reg wr_en_d;
+reg wr_fifo;
+reg wr_adv;
+reg [fifowidth-1:0] prev;
+reg [fifowidth-1:0] changed;
+
+always @(posedge sysclk) begin
+	if(wr_en) begin
+		changed <= prev ^ din;
+		prev <= din;
+		wr_en_d <= wr_en;
+	end
+	if(!reset_n)
+		prev <= 0;
+end
+
+reg [7:0] runlength;
+reg [fifowidth-1:0] tofifo;
+always @(*) begin
+	wr_adv <= 1'b0;
+	wr_fifo <= 1'b0;
+	if(wr_en_d) begin
+		tofifo <= prev;
+		if(changed == 0) begin
+			runlength<=runlength+1;
+			tofifo[fifowidth-1] <= 1'b1;	// Run length
+			tofifo[7:0] <= runlength;
+			wr_fifo <= 1'b1;
+			wr_adv <= 1'b1;
+		end else begin
+			runlength<=0;
+			tofifo[fifowidth-1] <= 1'b0;	// Literal data
+			wr_fifo <= 1'b1;
+		end
+	end
+end
+
 // Write logic
 
 always @(posedge sysclk) begin
 	if(wr_en && !full) begin
 		storage[writeptr]<=din;
 		writeptr<=writeptr_next;
-		writeptr_next <= writeptr_next+1;
+		if(wr_adv)
+			writeptr_next <= writeptr_next+1;
 	end
 	if(!reset_n) begin
 		writeptr <= 0;

@@ -342,6 +342,27 @@ proc ::jcapture::create_vcd {filename {timezero 0}} {
 	return $chan
 }
 
+
+# Given a hex string from OpenOCD, extract bits from the right hand edge.
+# The start bit is the rightmost bit of the desired sub-field, and
+# $width bits will be extracted leftwards
+
+proc ::jcapture::extractbits {word start width} {
+	set mask [expr "2 ** $width - 1"]
+	
+	set shift [expr "$start & 3"]
+	
+	set lastchar [expr "[string length $word] - $start / 4 - 1"]
+
+	set firstchar [expr "[string length $word] - ($start + ($width - 1)) / 4 - 1"]
+#	puts "mask: $mask, shift: $shift, character range: $firstchar $lastchar"
+	
+	set result [string range $word $firstchar $lastchar]
+	set result [expr "0x$result >> $shift"]
+	set result [expr "$result & $mask"]
+	return $result
+}
+
 # Dump the FIFO contents to a previously-created VCD file
 proc ::jcapture::fifo_to_vcd { chan } {
     puts "Dumping to VCD file"
@@ -353,32 +374,41 @@ proc ::jcapture::fifo_to_vcd { chan } {
 	while {[expr "0x$status & $::jcapture::flag_empty"] == 0 } {
 		set captures ""
 
-		puts $chan "#$vcdi"
-
 		set lastfield [expr {$fields - 1}]
 
 		virscan read
+		set dr [vdrscan $::jcapture::capture_width 0]
+		
+		set comp [extractbits $dr [expr "$::jcapture::capture_width - 1"] 1 ]		
+		
+		if {$comp==0} {
+			puts $chan "#$vcdi"
+			incr vcdi
 
-		for {set i 0 } {$i < $fields} {incr i} {
-			set record [lindex $::jcapture::fields $i]
-			set w [lindex $record 1]
-			if {$i==0} {
-				set d [vdrscan $w 0 -start]
-			} else {
-				if {$i==$lastfield} {
-					set d [vdrscan $w 0 -end]				
-				} else {
-					set d [vdrscan $w 0 -cont]
+			set firstbit 0
+			for {set i 0 } {$i < $fields} {incr i} {
+				set record [lindex $::jcapture::fields $i]
+				set w [lindex $record 1]
+				
+				set d [extractbits $dr $firstbit $w]
+				set firstbit [expr "$firstbit + $w"]
+				set id [vcdid $i]
+				puts $chan "b[dec2bin [expr 0x$d] $w] $id"
+				lappend captures "b[dec2bin [expr 0x$d] $w] $id"
+			}
+		} else {
+			set rl [expr "[extractbits $dr 0 8] + 1"]
+			puts "$dr : $comp : $rl"
+			for {set i 0} {$i < $rl} {incr i} {
+				puts $chan "#$vcdi"
+				incr vcdi
+				foreach cap $captures {
+					puts $chan $cap
 				}
-			}			
-			lappend captures $d
-			set id [vcdid $i]
-			puts $chan "b[dec2bin [expr 0x$d] $w] $id"
+			}
 		}
-
 		set status [getstatus]
 
-		incr vcdi
 	}
 	puts $chan "#$vcdi"
 	close $chan

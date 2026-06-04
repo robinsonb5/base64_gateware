@@ -1,9 +1,9 @@
 OBJ_DIR=obj_dir
 IMPL_DIR=impl1
 
-HDL_FILES = ../../fpga/icesugarpro_board_pkg.sv ../../rtl/sdram_pkg.sv ../../rtl/base64_m68k_pkg.sv ../../rtl/hostclocks.sv ../../rtl/jtag/jcapture.sv virtualtoplevel.sv
+HDL_FILES = ../../fpga/icesugarpro_board_pkg.sv ../../rtl/sdram_pkg.sv ../../rtl/base64_m68k_pkg.sv ../../rtl/hostclocks.sv ../../rtl/jtag/jcapture.sv ../../rtl/jtag/vjtag_sync_fifo.sv virtualtoplevel.sv
 HDL_FILES_SYNTH = $(HDL_FILES) ../../fpga/base64_icesugarpro_top.sv ../../pll/ecp5_14MHz_85MHz/clocks/clocks.sbx ../../pll/ecp5_25MHz_85MHz/supervisorclk/supervisorclk.sbx
-HDL_FILES_SIM = $(HDL_FILES) sim/clocks.sv tb.sv
+HDL_FILES_SIM = ../../rtl/base64_m68k_pkg.sv ../../rtl/hostclocks.sv sim/clocks.sv tb.sv ../../rtl/jtag/vjtag_sync_fifo.sv
 
 PROJ_FILE = clocktest.ldf
 BIT_FILE = impl1/clocktest_impl1.bit

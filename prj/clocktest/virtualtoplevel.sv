@@ -64,7 +64,9 @@ jcapture #(.designid(16'hc10c)) capture_inst (
 assign jtag_d[0] = clocks.clk7;
 assign jtag_d[2:1] = {clocks.clk7_en_p,clocks.clk7_en_n};
 assign jtag_d[3] = clocks.e_internal;
-assign jtag_d[31:4] = 28'b0;
+assign jtag_d[31:12] = 28'b0;
+
+assign jtag_d[11:4] = sctr[7:0] | sctr[13:6];
 
 reg ledr;
 always @(posedge clocks.svclk) begin
@@ -73,7 +75,7 @@ always @(posedge clocks.svclk) begin
 end
 assign led_red = ledr;
 
-reg [25:1] sctr;
+reg [25:0] sctr;
 always @(posedge clocks.sysclk) begin
 	sctr<=sctr+1;
 end

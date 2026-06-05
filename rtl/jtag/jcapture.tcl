@@ -369,12 +369,13 @@ proc ::jcapture::fifo_to_vcd { chan } {
 	set fields [llength $::jcapture::fields]
 
 	set vcdi 0
+	set lastfield [expr {$fields - 1}]
 
 	set status [getstatus]
+	virscan read
+	set dr [vdrscan $::jcapture::capture_width 0]
 	while {[expr "0x$status & $::jcapture::flag_empty"] == 0 } {
 		set captures ""
-
-		set lastfield [expr {$fields - 1}]
 
 		virscan read
 		set dr [vdrscan $::jcapture::capture_width 0]
@@ -383,7 +384,6 @@ proc ::jcapture::fifo_to_vcd { chan } {
 		
 		if {$comp==0} {
 			puts $chan "#$vcdi"
-			incr vcdi
 
 			set firstbit 0
 			for {set i 0 } {$i < $fields} {incr i} {
@@ -393,17 +393,20 @@ proc ::jcapture::fifo_to_vcd { chan } {
 				set d [extractbits $dr $firstbit $w]
 				set firstbit [expr "$firstbit + $w"]
 				set id [vcdid $i]
-				puts $chan "b[dec2bin [expr 0x$d] $w] $id"
-				lappend captures "b[dec2bin [expr 0x$d] $w] $id"
+				puts $chan "b[dec2bin $d $w] $id"
+				lappend captures "b[dec2bin $d $w] $id"
 			}
+			incr vcdi
 		} else {
 			set rl [expr "[extractbits $dr 0 8] + 1"]
-			puts "$dr : $comp : $rl"
-			for {set i 0} {$i < $rl} {incr i} {
-				puts $chan "#$vcdi"
-				incr vcdi
-				foreach cap $captures {
-					puts $chan $cap
+#			puts "$dr : $comp : $rl"
+			if {$vcdi > 0} {
+				for {set i 0} {$i < $rl} {incr i} {
+					puts $chan "#$vcdi"
+					foreach cap $captures {
+						puts $chan $cap
+					}
+					incr vcdi
 				}
 			}
 		}

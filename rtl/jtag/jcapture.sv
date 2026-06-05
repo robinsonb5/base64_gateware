@@ -35,6 +35,7 @@ module jcapture #(
 	parameter capturedepth=9,
 	parameter triggerwidth=32,
 	parameter userirwidth=4, // Can be a maxmium of 4.
+	parameter runlengthencoding=1, // Disable to reduce logic footprint and increase speed.
 	parameter designid = 16'h35ac
 ) (
 	input clk,

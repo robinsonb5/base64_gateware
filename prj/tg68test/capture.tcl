@@ -12,15 +12,23 @@ set projectid 0x68ff
 # The total number of bits here must match the width defined in jcapture_pkg.vhd
 source ./capturefields.tcl
 
+set loc [file dirname [file normalize [info script]]]
+source ${loc}/../../rtl/jtag/jcapture.tcl
+
+# Enumerate user IR codes, starting at 0
+set ::jcapture::usercodes {
+	reset kickselect addr read write
+}
+
 proc sendreset { v } {
-	::jcapture::command write
-	::jcapture::vdrscan $::jcapture::capture_width $v
+	::jcapture::usercmd reset $v
+}
+
+proc selkick { v } {
+	::jcapture::usercmd kickselect $v
 }
 
 puts "Setting TAP, capture fields and length"
-
-set loc [file dirname [file normalize [info script]]]
-source ${loc}/../../rtl/jtag/jcapture.tcl
 
 ::jcapture::setup target.tap $capture_fields $projectid
 
@@ -68,6 +76,8 @@ source ${loc}/../../rtl/jtag/jcapture.tcl
 
 puts "Recording to cap.vcd"
  	sendreset 1
+	selkick 0
+ 	sendreset 0
 
 	set chan [::jcapture::create_vcd cap.vcd 0]
 	::jcapture::setleadin 0

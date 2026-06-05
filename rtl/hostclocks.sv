@@ -8,17 +8,21 @@ module hostclocks #(parameter phase=2) (
 	input clk7,
 	input clk2x,
 	input fpgaclk,
-	output m68k_clocks cpu_clocks
+	output m68k_clocks cpu_clocks,
+	output reg clk7out // for debugging
 );
-
-// Clocking - derive a fast internal clock from the incoming 14MHz clock.
-// (Will be synchronous to the motherboard clock - could use the incoming 25MHz clock
-// to create an asynchronous clock if we have any trouble with this.)
 
 wire sysclk;
 wire ramclk;
 wire slowclk;
+
+// * CURRENTLY DISABLED - using asynchronous clock instead. *
+// Clocking - derive a fast internal clock from the incoming 14MHz clock.
+// (Will be synchronous to the motherboard clock - could use the incoming 25MHz clock
+// to create an asynchronous clock if we have any trouble with this.)
+
 wire pll_locked=1'b1;
+
 //clocks clocks (
 //	.CLKI(clk2x),
 //	.CLKOP(sysclk),
@@ -86,19 +90,22 @@ always @(posedge sysclk) begin
 	if(clk7_s[2] != clk7_s[1]) begin
 		clk7_ctr<=0;
 		edge_ctr <= clk7_ctr;
-		clk7_edge <= clk7_s[2];
+		clk7_edge <= clk7_s[2];	// When the clock changes, latch its previous state
 	end
 	
 	clk7_en_p <= 1'b0;
 	clk7_en_n <= 1'b0;
-	if(edge_ctr == phase)
+	if(edge_ctr == phase) begin
 		{clk7_en_p,clk7_en_n} <= {clk7_edge,~clk7_edge};
+		clk7out <= clk7_edge;
+	end
 end
+
 assign cpu_clocks.clk7_en_p = clk7_en_p;
 assign cpu_clocks.clk7_en_n = clk7_en_n;
 assign cpu_clocks.clk7 = clk7;
 
-// Generate a E clock
+// Generate an E clock
 reg [3:0] e_ctr;
 reg e;
 always @(posedge sysclk) begin

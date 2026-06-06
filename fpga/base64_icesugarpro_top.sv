@@ -197,7 +197,7 @@ assign sdram_cke = sdr_out.cke;
 
 reg jtag_reset_n=1'b1;
 
-virtualtoplevel #(.sysclk_freq(87)) project (
+virtualtoplevel #(.sysclk_freq(100)) project (
 	.clocks(clocks),
 	// M68K bus
 	.socket_addr_ctrl(address), 

@@ -15,13 +15,10 @@
         <Source name="../../fpga/base64_icesugarpro_top.sv" type="Verilog" type_short="Verilog">
             <Options/>
         </Source>
-        <Source name="../../pll/ecp5_14MHz_85MHz/clocks/clocks.sbx" type="sbx" type_short="SBX">
-            <Options/>
-        </Source>
         <Source name="virtualtoplevel.sv" type="Verilog" type_short="Verilog">
             <Options/>
         </Source>
-        <Source name="../../pll/ecp5_25MHz_85MHz/supervisorclk/supervisorclk.sbx" type="sbx" type_short="SBX">
+        <Source name="../../pll/ecp5_25MHz_100MHz/supervisorclk/supervisorclk.sbx" type="sbx" type_short="SBX">
             <Options/>
         </Source>
         <Source name="../../rtl/hostclocks.sv" type="Verilog" type_short="Verilog">

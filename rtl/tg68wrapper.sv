@@ -26,6 +26,8 @@ module tg68wrapper # (
 reg jtag_reset_n = 1'b1;
 
 
+// State machine states
+
 typedef enum logic[3:0] {
 	RESET,
 	INIT,
@@ -41,6 +43,8 @@ typedef enum logic[3:0] {
 
 state_t state=RESET;
 
+
+// CPU clkena pulses must be at least 4 clocks apart.
 reg clkena;
 reg [2:0] slower;
 
@@ -49,6 +53,9 @@ always @(posedge clocks.sysclk) begin
 	if(clkena)
 		slower<=0;
 end
+
+
+// Main CPU signals
 
 wire [31:0] tg68_addr;
 reg  [15:0] tg68_din;
@@ -77,10 +84,23 @@ wire sel_fast24 = tg68_addr[31:24] == 8'h0 && (tg68_addr[23:20] == 4'h2) ? 1'b1 
 wire sel_fast32 = tg68_addr[31:27] == 5'h0 && tg68_addr[26]==1'b1 ? 1'b1 : 1'b0;
 
 // The rest can be handled on a more relaxed schedule, so we use a latched copy
-// of the address
+// of the address. We also mux between the CPU and JTAG interface here.
+
+localparam DEVICE_CPU=1'b0;
+localparam DEVICE_JTAG=1'b1;
+reg selecteddevice;
+
 reg [31:0] tg68_addr_d;
-always @(posedge clocks.sysclk)
-	tg68_addr_d <= tg68_addr;
+always @(posedge clocks.sysclk) begin
+	case (selecteddevice)
+		DEVICE_JTAG : begin
+				tg68_addr_d <= jtag_user_addr;
+			end
+		default : begin
+				tg68_addr_d <= tg68_addr;
+			end
+	endcase
+end
 
 reg softkick_ena;
 reg softkick_overlay;
@@ -89,10 +109,21 @@ wire sel_slowram = tg68_addr_d[31:20] == 12'h00c ? 1'b1 : 1'b0;
 wire sel_autoconfig = tg68_addr_d[31:16] == 16'h00b8 ? 1'b1 : 1'b0;
 wire sel_bootrom = tg68_addr_d[31:16] == 16'h0000 && bootrom_ena ? 1'b1 : 1'b0;
 wire sel_kickoverlay = tg68_addr_d[31:16] == 16'h0000 && softkick_ena && softkick_overlay ? 1'b1 : 1'b0;
-wire sel_kickstart = (tg68_addr_d[31:20] == 12'hfff || tg68_addr_d[31:20] == 12'h00f) && tg68_addr_d[19]==1'b1 && softkick_ena ? 1'b1 : 1'b0;
+wire sel_softkick = (tg68_addr_d[31:20] == 12'hfff || tg68_addr_d[31:20] == 12'h00f) && tg68_addr_d[19]==1'b1 && softkick_ena ? 1'b1 : 1'b0;
 wire sel_cia = tg68_addr_d[31:16] == 16'h00bf ? 1'b1 : 1'b0;
 wire sel_peripherals = tg68_addr_d[31:24] == 8'h01 ? 1'b1 : 1'b0;
 wire sel_serdat = tg68_addr_d[31:0] == 32'h00dff030 ? 1'b1 : 1'b0;
+
+
+// Interface between JTAG user codes
+// and the Amiga.
+reg [31:0] jtag_user_addr;
+reg [31:0] jtag_user_d;
+reg [31:0] jtag_user_q;
+reg jtag_user_req;
+reg jtag_user_ack;
+reg jtag_user_wr;
+
 
 // Boot ROM
 
@@ -150,8 +181,6 @@ reg [1:0] tg68_reset_s;
 reg [10:0] reset_debounce_ctr=0;
 wire reset_debounced = reset_debounce_ctr[10];
 
-//Temporarily disable reset
-
 always @(posedge clocks.sysclk) begin
 	if(!reset_debounced)
 		reset_debounce_ctr<=reset_debounce_ctr+1;
@@ -201,7 +230,7 @@ reg [1:0] sdram_ds;
 
 assign sdram_addr[18:0] = tg68_addr_d[18:0];
 assign sdram_addr[24:19] = sel_kickoverlay ? 6'h3f :
-                           sel_kickstart ? 6'h3f :
+                           sel_softkick ? 6'h3f :
                            tg68_addr_d[24:19];
 
 sdram #(
@@ -261,18 +290,27 @@ always @(posedge clocks.sysclk) begin
 		end
 
 		DECODE: begin
-			if(slower[0] && !clkena) begin
-				if(tg68_state == STATE_INTERNAL) begin
-					clkena <= 1'b1;
-					state <= WAIT_INTERNAL;
-				end else if(sel_fast24 || sel_fast32) begin // We need to handle Fast RAM requests as promptly as possible
-					sdram_we <= tg68_state == STATE_WRITE ? 1'b1 : 1'b0;
-					sdram_from_cpu <= tg68_dout;
-					sdram_ds <= {tg68_uds,tg68_lds};
-					sdram_cs <= 1'b1;
-					state <= FASTRAM;
+			if(jtag_user_req != jtag_user_ack) begin
+				if(selecteddevice==DEVICE_CPU) begin
+					selecteddevice<=DEVICE_JTAG; // Switch to JTAG mode and give 
+					state <= WAIT_INTERNAL;      // address decoding time to catch up.
 				end else begin
-					state <= REQ;	// Handle other requests a cycle later
+					state <= REQ;
+				end
+			end else begin
+				if(slower[0] && !clkena) begin
+					if(tg68_state == STATE_INTERNAL) begin
+						clkena <= 1'b1;
+						state <= WAIT_INTERNAL;
+					end else if(sel_fast24 || sel_fast32) begin // We need to handle Fast RAM requests as promptly as possible
+						sdram_we <= tg68_state == STATE_WRITE ? 1'b1 : 1'b0;
+						sdram_from_cpu <= tg68_dout;
+						sdram_ds <= {tg68_uds,tg68_lds};
+						sdram_cs <= 1'b1;
+						state <= FASTRAM;
+					end else begin
+						state <= REQ;	// Handle other requests a cycle later
+					end
 				end
 			end
 		end
@@ -358,41 +396,51 @@ always @(posedge clocks.sysclk) begin
 				clkena <= 1'b1;
 				state <= DECODE;
 
-			end else if(sel_kickoverlay || sel_kickstart) begin
+			end else if(sel_kickoverlay || sel_softkick) begin
 				sdram_we <= 1'b0;
 				sdram_ds <= 2'b00;
 				sdram_cs <= 1'b1;
 				state <= FASTRAM;
 			end else begin
+
 				if(sel_cia && tg68_state == STATE_WRITE) // First write to CIA registers cancels overlay
 					softkick_overlay <= 1'b0;
 
-				cpu_req.addr <= tg68_addr;
-				cpu_req.d <= tg68_dout;
-				cpu_req.dm <= {~tg68_uds,~tg68_lds};				
-				case(tg68_state)
-					STATE_FETCH: begin // Instruction fetch
-							cpu_req.req<=~cpu_resp.ack;
-							cpu_req.wr <= 1'b0;
-							cpu_req.ifetch <= 1'b1;
-						end
-					STATE_INTERNAL: begin // Internal cycle
-						end
-					STATE_READ: begin // Data read
-							cpu_req.req<=~cpu_resp.ack;
-							cpu_req.wr <= 1'b0;
-							cpu_req.ifetch <= 1'b0;
-						end
-					STATE_WRITE: begin // Data write
-							cpu_req.req<=~cpu_resp.ack;
-							cpu_req.wr <= 1'b1;
-							cpu_req.ifetch <= 1'b0;
-							if(sel_serdat) begin
-								uart_d <= tg68_dout[7:0];
-								uart_stb <= 1'b1;
+				cpu_req.addr <= tg68_addr_d;
+				if(selecteddevice==DEVICE_JTAG) begin
+					cpu_req.d <= jtag_user_q;
+					cpu_req.dm <= 2'b11; // Probably don't need byte-level access over JTAG.
+					cpu_req.wr <= jtag_user_wr;
+					cpu_req.ifetch <= 1'b0;
+					cpu_req.req<=~cpu_resp.ack;
+					// FIXME - handle JTAG writes to SDRAM here.
+				end else begin
+					cpu_req.d <= tg68_dout;
+					cpu_req.dm <= {~tg68_uds,~tg68_lds};				
+					case(tg68_state)
+						STATE_FETCH: begin // Instruction fetch
+								cpu_req.req<=~cpu_resp.ack;
+								cpu_req.wr <= 1'b0;
+								cpu_req.ifetch <= 1'b1;
 							end
-						end			
-				endcase
+						STATE_INTERNAL: begin // Internal cycle
+							end
+						STATE_READ: begin // Data read
+								cpu_req.req<=~cpu_resp.ack;
+								cpu_req.wr <= 1'b0;
+								cpu_req.ifetch <= 1'b0;
+							end
+						STATE_WRITE: begin // Data write
+								cpu_req.req<=~cpu_resp.ack;
+								cpu_req.wr <= 1'b1;
+								cpu_req.ifetch <= 1'b0;
+								if(sel_serdat) begin
+									uart_d <= tg68_dout[7:0];
+									uart_stb <= 1'b1;
+								end
+							end			
+					endcase
+				end
 				state <= WAIT;
 			end
 		end
@@ -411,9 +459,19 @@ always @(posedge clocks.sysclk) begin
 
 		WAIT: begin
 			if(slower[0] && (cpu_resp.ack==cpu_req.req)) begin
-				tg68_din <= cpu_resp.q;
-				clkena <=1'b1;
-				state <= DECODE;
+				case(selecteddevice)
+					DEVICE_JTAG : begin
+							jtag_user_d <= cpu_resp.q;
+							selecteddevice <= DEVICE_CPU;
+							jtag_user_ack <= jtag_user_req;
+							state <= WAIT_INTERNAL;
+						end
+					default : begin
+							tg68_din <= cpu_resp.q;
+							clkena <=1'b1;
+							state <= DECODE;
+						end
+				endcase
 			end
 		end
 
@@ -444,6 +502,7 @@ always @(posedge clocks.sysclk) begin
 		spi_speed_sel <= 1'b0;
 		spi_cs <= 1'b1;
 		softkick_overlay <= 1'b1;
+		jtag_user_ack <= 1'b0;
 	end
 
 end
@@ -520,17 +579,19 @@ jcapture #(
 	.capture_d(jtag_d),
 	.user_ir(user_ir),
 	.user_ir_update(),
-	.user_d(),
+	.user_d(jtag_user_d),
 	.user_q(jtag_q),
 	.user_update(jtag_update)
 );
 
 // Need a way to remotely upload a ROM, which means
 // defining a command set.
-// The command set will then 
 
 localparam usercmd_reset = 4'd0; 
 localparam usercmd_kickselect = 4'd1;
+localparam usercmd_address = 4'd2;
+localparam usercmd_read = 4'd3;
+localparam usercmd_write = 4'd4;
 
 always @(posedge clocks.sysclk) begin
 	jtag_romsel_stb <= 1'b0;
@@ -546,6 +607,22 @@ always @(posedge clocks.sysclk) begin
 				jtag_romsel_stb <= 1'b1;
 			end
 
+			usercmd_address : begin
+				jtag_user_addr <= jtag_q[31:0];
+			end
+
+			// FIXME - auto-increment address when transaction finishes
+			usercmd_read : begin
+				jtag_user_wr <= 1'b0;
+				jtag_user_req <= ~jtag_user_ack;
+			end
+
+			usercmd_write : begin
+				jtag_user_wr <= 1'b1;
+				jtag_user_q <= jtag_q;
+				jtag_user_req <= ~jtag_user_ack;
+			end
+
 			default : 
 				;
 
@@ -554,4 +631,3 @@ always @(posedge clocks.sysclk) begin
 end
 
 endmodule
-

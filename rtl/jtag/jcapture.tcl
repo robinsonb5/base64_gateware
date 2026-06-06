@@ -163,7 +163,6 @@ proc ::jcapture::userir {cmd} {
 		# If bit 4 is set the jcapture module treats the lower 4 bits as the user ir code.
 		set v [ expr "$v | 0x10" ]
 		irscan $::jcapture::tap $::jcapture::vir
-		puts "setting ir to $v ($::jcapture::irsize)"
 		return [drscan $::jcapture::tap $::jcapture::irsize $v]
 	} else {
 		error "Unknown command $cmd";

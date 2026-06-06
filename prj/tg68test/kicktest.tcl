@@ -39,26 +39,45 @@ puts "Setting TAP, capture fields and length"
 ::jcapture::setup target.tap $capture_fields $projectid
 
 # Erase the first 32 words of softkicked ROM
+#set a 0x05f80000
+#::jcapture::usercmd addr $a
+#for {set i 0} {$i < 0x32} {incr i} {
+#	::jcapture::usercmd write 0
+#	incr a
+#	incr a
+#	::jcapture::usercmd addr $a
+#}
+
 set a 0x05f80000
-::jcapture::usercmd addr $a
-for {set i 0} {$i < 0x32} {incr i} {
-	::jcapture::usercmd write 0
-	incr a
-	incr a
-	::jcapture::usercmd addr $a
+
+set chan [open "testrom/testrom.bin" "rb"]
+while {[eof $chan]==0} {
+	set v [scan [read $chan 1] %c]
+	set v2 [scan [read $chan 1] %c]
+	if {[eof $chan]==0} {
+		set v [expr "($v << 8) | $v2" ]
+		::jcapture::usercmd addr $a
+		::jcapture::usercmd write $v
+		set a [expr "$a + 2"]
+	}
 }
+close $chan
 
 # Dump the first 32 words of softkicked ROM
-set a 0x05f80000
-::jcapture::usercmd addr $a
-set d [::jcapture::usercmd read 0]
-for {set i 0} {$i < 0x32} {incr i} {
-	::jcapture::usercmd read 0
-	set d [::jcapture::userdr 0]
-	puts "[format %08x $a] [format %04x [expr 0x$d]]"
-	incr a
-	incr a
-	::jcapture::usercmd addr $a
-}
+#set a 0x05f80000
+#::jcapture::usercmd addr $a
+#set d [::jcapture::usercmd read 0]
+#for {set i 0} {$i < 0x100} {incr i} {
+#	::jcapture::usercmd read 0
+#	set d [::jcapture::userdr 0]
+#	puts "[format %08x $a] [format %04x [expr 0x$d]]"
+#	incr a
+#	incr a
+#	::jcapture::usercmd addr $a
+#}
+
+sendreset 1
+selkick 1
+sendreset 0
 
 exit

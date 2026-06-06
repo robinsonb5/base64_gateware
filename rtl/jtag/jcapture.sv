@@ -109,12 +109,10 @@ reg [triggerwidth-1:0] trigmask;
 reg [triggerwidth-1:0] triggers;
 wire [triggerwidth-1:0] inverted;
 
-// Record the mask, invert and edge signals
-// and set the trigger signal when conditions are met.
-
+// User IR code
 always @(posedge clk) begin
 	user_ir_update <= 1'b0;
-	if (drupdate) begin
+	if (irupdate) begin
 		if(irfromjtag=={jtag_irsize{1'b1}}) begin
 			// FIXME - implement proper bypass mode
 
@@ -122,7 +120,17 @@ always @(posedge clk) begin
 			// User IR code
 			user_ir <= irfromjtag[userirwidth-1:0];
 			user_ir_update <= 1'b1;
-		end else begin
+		end
+	end
+end
+
+
+// Record the mask, invert and edge signals
+// and set the trigger signal when conditions are met.
+
+always @(posedge clk) begin
+	if (drupdate) begin
+		if(!irfromjtag[jtag_irsize-1]) begin
 			// JCapture IR code
 			case (irfromjtag[jcapture_irwidth-1:0])
 				jcapture_ir_setmask   : trigmask   <= drfromjtag[triggerwidth-1:0];
@@ -375,10 +383,9 @@ wire busy = capstate==STATE_IDLE ? 1'b0 : 1'b1;
 wire capturing = capstate==STATE_CAPTURE ? 1'b1 : 1'b0;
 
 always @(posedge clk) begin
-	if(irfromjtag[jtag_irsize-1]) begin
+	if(irfromjtag[jtag_irsize-1]) begin  // User command
 		drtojtag <= user_d;
-		// User mode
-	end else begin
+	end else begin  // System command
 		case(irfromjtag[jcapture_irwidth-1:0])
 			jcapture_ir_cmd :
 				drtojtag <= {designid,capturing,fifo_empty,fifo_full,busy};

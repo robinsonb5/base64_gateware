@@ -123,6 +123,11 @@ reg [31:0] jtag_user_q;
 reg jtag_user_req;
 reg jtag_user_ack;
 reg jtag_user_wr;
+reg jtag_user_stb;
+
+// JTAG SDRAM select signals
+wire jtag_sel_fast24 = jtag_user_addr[31:24] == 8'h0 && (jtag_user_addr[23:20] == 4'h2) ? 1'b1 : 1'b0;
+wire jtag_sel_fast32 = jtag_user_addr[31:27] == 5'h0 && jtag_user_addr[26]==1'b1 ? 1'b1 : 1'b0;
 
 
 // Boot ROM
@@ -275,6 +280,8 @@ always @(posedge clocks.sysclk) begin
 
 	spi_d_stb <= 1'b0;
 
+	jtag_user_stb <= 1'b0;
+
 	case(state)
 		RESET: begin
 			uart_rxpending <= 1'b0;
@@ -317,10 +324,21 @@ always @(posedge clocks.sysclk) begin
 		
 		FASTRAM : begin
 			if(sdram_ack) begin
-				tg68_din <= sdram_to_cpu;
 				sdram_cs <= 1'b0;
-				clkena <= 1'b1;
-				state <= DECODE;
+				case(selecteddevice)
+					DEVICE_JTAG : begin
+							jtag_user_d <= sdram_to_cpu;
+							selecteddevice <= DEVICE_CPU;
+							jtag_user_ack <= jtag_user_req;
+							jtag_user_stb <= 1'b1;
+							state <= WAIT_INTERNAL;
+						end
+					default : begin
+							tg68_din <= sdram_to_cpu;
+							clkena <= 1'b1;
+							state <= DECODE;
+						end
+				endcase
 			end
 		end
 
@@ -408,12 +426,20 @@ always @(posedge clocks.sysclk) begin
 
 				cpu_req.addr <= tg68_addr_d;
 				if(selecteddevice==DEVICE_JTAG) begin
-					cpu_req.d <= jtag_user_q;
-					cpu_req.dm <= 2'b11; // Probably don't need byte-level access over JTAG.
-					cpu_req.wr <= jtag_user_wr;
-					cpu_req.ifetch <= 1'b0;
-					cpu_req.req<=~cpu_resp.ack;
-					// FIXME - handle JTAG writes to SDRAM here.
+					if(jtag_sel_fast24 || jtag_sel_fast32) begin // SDRAM
+						sdram_we <= jtag_user_wr;
+						sdram_from_cpu <= jtag_user_q;
+						sdram_ds <= 2'b00;
+						sdram_cs <= 1'b1;
+						state <= FASTRAM;
+					end else begin
+						cpu_req.d <= jtag_user_q;
+						cpu_req.dm <= 2'b11; // Probably don't need byte-level access over JTAG.
+						cpu_req.wr <= jtag_user_wr;
+						cpu_req.ifetch <= 1'b0;
+						cpu_req.req<=~cpu_resp.ack;
+						state <= WAIT;
+					end	
 				end else begin
 					cpu_req.d <= tg68_dout;
 					cpu_req.dm <= {~tg68_uds,~tg68_lds};				
@@ -440,8 +466,8 @@ always @(posedge clocks.sysclk) begin
 								end
 							end			
 					endcase
+					state <= WAIT;
 				end
-				state <= WAIT;
 			end
 		end
 
@@ -464,6 +490,7 @@ always @(posedge clocks.sysclk) begin
 							jtag_user_d <= cpu_resp.q;
 							selecteddevice <= DEVICE_CPU;
 							jtag_user_ack <= jtag_user_req;
+							jtag_user_stb <= 1'b1;
 							state <= WAIT_INTERNAL;
 						end
 					default : begin
@@ -611,7 +638,6 @@ always @(posedge clocks.sysclk) begin
 				jtag_user_addr <= jtag_q[31:0];
 			end
 
-			// FIXME - auto-increment address when transaction finishes
 			usercmd_read : begin
 				jtag_user_wr <= 1'b0;
 				jtag_user_req <= ~jtag_user_ack;
@@ -627,6 +653,9 @@ always @(posedge clocks.sysclk) begin
 				;
 
 		endcase
+
+		if(jtag_user_stb) // Increment address - FIXME : not working - why?
+			jtag_user_addr <= jtag_user_addr + 2;
 	end
 end
 

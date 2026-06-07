@@ -45,7 +45,7 @@ puts "Setting TAP, capture fields and length"
 ::jcapture::settrigger value clkena 1
 
 ::jcapture::settrigger edge screenwhite 0
-::jcapture::settrigger mask screenwhite 1
+::jcapture::settrigger mask screenwhite 0
 ::jcapture::settrigger value screenwhite 1
 
 #::jcapture::settrigger edge addr 0x00000000
@@ -75,9 +75,9 @@ puts "Setting TAP, capture fields and length"
 ::jcapture::setsubsample 0
 
 puts "Recording to cap.vcd"
- 	sendreset 1
-	selkick 0
- 	sendreset 0
+# 	sendreset 1
+#	selkick 0
+#	sendreset 0
 
 	set chan [::jcapture::create_vcd cap.vcd 0]
 	::jcapture::setleadin 0

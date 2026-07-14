@@ -3,14 +3,18 @@ by Alastair M. Robinson
 making use of the TG68k CPU core by Tobias Gubener
 
 ## General structure:
+The prj directory contains subprojects which can be built using their respective Makefiles.
 
 ### Clock recovery:
-Incoming 7MHz Amiga clock is clock-doubled to 14MHz in order to supply a fast enough
-base clock for the ECP5's PLLs.
+The Rev B board provides a clock-doubled version of the incoming 7MHz Amiga clock,
+in order to supply a synchronous clock fast enough for the ECP5's PLLs.
+The Rev C board supplies a x12 version of the clock, around 85MHz, synchronous 
+with the 7MHz clock. This project doesn't currently use the faster clocks.
 
-A high frequency clock of an integer multiple is generated, then _pos and _neg strobe signals
-are generated to mark the rising and falling edges of the 7MHz clock.
-  
+Instead, a high-frequency internal clock is generated from the IceSugar-Pro's
+own 25MHz clock, then _pos and _neg strobe signals are generated to mark the 
+rising and falling edges of the 7MHz clock.
+
 ### MC68000 bus state machine
 Has responsibility for the 24-bit address space
 Handles communication with the motherboard
@@ -24,7 +28,7 @@ Potentially reserve some RAM space for a kickstart ROM, in which case some of th
 will have to be decoded too.
   
 ### SDRAM controller and cache
-SDRAM controller will run in burst mode - 4 words or words
+SDRAM controller will run in burst mode - either 4 words or 8 words
 
 ## Building
 

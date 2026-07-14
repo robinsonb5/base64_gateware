@@ -72,6 +72,12 @@
         <Source name="../../rtl/peripherals/spi.sv" type="Verilog" type_short="Verilog">
             <Options/>
         </Source>
+        <Source name="../../rtl/autoconfig/autoconfig.v" type="Verilog" type_short="Verilog">
+            <Options/>
+        </Source>
+        <Source name="../../rtl/autoconfig/autoconfig_rom.vhd" type="VHDL" type_short="Verilog">
+            <Options/>
+        </Source>
         <Source name="../../fpga/base64_icesugarpro.lpf" type="Logic Preference" type_short="LPF">
             <Options/>
         </Source>

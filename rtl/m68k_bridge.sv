@@ -59,12 +59,11 @@ always @(posedge clks.sysclk) begin
 					m_addr.a_en<=1'b0;
 					m_addr.drive<=1'b0; // Address bus still needs to be high-z.
 					m_data_out.drive<=1'b0;
-					m_data_out.dq_en<=1'b0; // Data bus high-z
+					m_data_out.dq_en<=1'b1;// 0; // Data bus high-z
 				end
 
 				if(clks.clk7_en_p && (cpu_req.req!=cpu_resp.ack)) begin
 					m_misc_out.fc<={cpu_req.supervisor,cpu_req.ifetch,~cpu_req.ifetch};
-					m_addr.a_en<=1'b1;
 					state <= S1;
 				end
 
@@ -75,6 +74,7 @@ always @(posedge clks.sysclk) begin
 				// Entering state 1 (S1), the processor drives a valid address on the address bus.
 				if(clks.clk7_en_n) begin
 					m_addr.a <= cpu_req.addr[23:1];
+					m_addr.a_en<=1'b1;
 					m_addr.drive <= 1'b1;
 					state <= S2;
 				end
@@ -125,12 +125,34 @@ always @(posedge clks.sysclk) begin
 						m_addr.lds <= ~cpu_req.dm[0];
 					end
 
+					// The test for DTACK should happen at the negedge...
+					state <= S5;
+//					if(m_misc_in.dtack==1'b0) begin
+//						state <= S6;
+//					end
+//					if(m_misc_in.berr==1'b0) begin
+//						state <= S6;
+//					end
+//					if(m_misc_in.vpa==1'b0) begin
+//						if(!clks.e_internal && !m_misc_out.e) begin // E clock low
+//							m_misc_out.vma <= 1'b0;
+//							state <= P5;
+//						end
+//					end
+				end
+			end
+
+		S5: begin
+				// STATE 5 (negedge)
+				// During state 5 (S5), no bus signals are altered.
+
+				// On the entry to this state (i.e. clock negedge), check for DTACK, etc.
+				if(clks.clk7_en_n) begin
 					if(m_misc_in.dtack==1'b0) begin
-						state <= S5;
+						state <= S6;
 					end
 					if(m_misc_in.berr==1'b0) begin
-						state <= S5;
-					
+						state <= S6;
 					end
 					if(m_misc_in.vpa==1'b0) begin
 						if(!clks.e_internal && !m_misc_out.e) begin // E clock low
@@ -138,14 +160,7 @@ always @(posedge clks.sysclk) begin
 							state <= P5;
 						end
 					end
-				end
-			end
-
-		S5: begin
-				// STATE 5 (negedge)
-				// During state 5 (S5), no bus signals are altered.
-				if(clks.clk7_en_n) begin
-					state <= S6;
+//					state <= S6;
 				end
 			end
 
@@ -163,8 +178,8 @@ always @(posedge clks.sysclk) begin
 				// data from the addressed device and negates AS, U D S, and LDS. At
 				// the rising edge of S7, the processor places the address bus in the high-
 				// impedance state. The device negates DTACK or BERR at this time.
+				cpu_resp.q <= m_data_in.d;
 				if(clks.clk7_en_n) begin
-					cpu_resp.q <= m_data_in.d;
 					cpu_resp.ack <= cpu_req.req;
 					m_addr.as<=1'b1;
 					m_addr.uds<=1'b1;

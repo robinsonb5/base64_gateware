@@ -6,7 +6,8 @@ FIRMWARE = firmware/Firmware.hex
 
 HDL_FILES = ../../fpga/icesugarpro_board_pkg.sv ../../rtl/sdram_pkg.sv ../../rtl/base64_m68k_pkg.sv ../../rtl/hostclocks.sv \
 			../../rtl/cpu_pkg.sv ../../rtl/m68k_bridge.sv ../../rtl/cpu_probe.sv ../../rtl/tg68wrapper.sv virtualtoplevel.sv \
-			Firmware_ROM.sv ../../rtl/peripherals/uart.sv ../../rtl/peripherals/spi.sv ../../rtl/sdram.sv
+			Firmware_ROM.sv ../../rtl/peripherals/uart.sv ../../rtl/peripherals/spi.sv ../../rtl/sdram.sv \
+			../../rtl/autoconfig/autoconfig_rom.vhd ../../rtl/autoconfig/autoconfig.v
 
 HDL_FILES_SYNTH = $(HDL_FILES) ../../fpga/base64_icesugarpro_top.sv ../../pll/ecp5_14MHz_85MHz/clocks/clocks.sbx \
             ../../pll/ecp5_25MHz_85MHz/supervisorclk/supervisorclk.sbx \

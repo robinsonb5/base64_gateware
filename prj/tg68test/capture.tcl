@@ -45,12 +45,12 @@ puts "Setting TAP, capture fields and length"
 ::jcapture::settrigger value screenwhite 0
 
 ::jcapture::settrigger edge addr 0x00000000
-::jcapture::settrigger mask addr 0x00ff0000
+::jcapture::settrigger mask addr 0x00020000
 ::jcapture::settrigger value addr 0x00e80000
 
 ::jcapture::settrigger edge cpustate 0
 ::jcapture::settrigger mask cpustate 0x3
-::jcapture::settrigger value cpustate 0x3
+::jcapture::settrigger value cpustate 0x2
 
 ::jcapture::setsubsample 0
 

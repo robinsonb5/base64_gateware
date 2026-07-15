@@ -147,9 +147,6 @@ hostclocks #(.phase(1)) hostclocks (
 
 assign sdram_clk=clocks.ramclk;
 
-assign bg = clk7out;
-
-
 // ToDo - run a frequency counter on the incoming 25MHz clock to check that the generated
 // sysclock is within acceptable bounds.
 
@@ -196,7 +193,7 @@ assign misc_in.reset = reset;
 m68k_misc_out misc_out;
 assign fc = misc_out.fc;
 assign vma = misc_out.vma;
-//assign bg = misc_out.bg;
+assign bg = misc_out.bg;
 assign e = misc_out.e;
 
 

@@ -17,7 +17,7 @@ wire ramclk;
 wire slowclk;
 
 // * CURRENTLY DISABLED - using asynchronous clock instead. *
-// Clocking - derive a fast internal clock from the incoming 14MHz clock.
+// Clocking - derive a fast internal clock from the incoming 14MHz/85MHz clock.
 // (Will be synchronous to the motherboard clock - could use the incoming 25MHz clock
 // to create an asynchronous clock if we have any trouble with this.)
 

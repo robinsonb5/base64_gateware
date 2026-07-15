@@ -10,7 +10,7 @@ HDL_FILES = ../../fpga/icesugarpro_board_pkg.sv ../../rtl/sdram_pkg.sv ../../rtl
 			../../rtl/autoconfig/autoconfig_rom.vhd ../../rtl/autoconfig/autoconfig.v
 
 HDL_FILES_SYNTH = $(HDL_FILES) ../../fpga/base64_icesugarpro_top.sv ../../pll/ecp5_14MHz_85MHz/clocks/clocks.sbx \
-            ../../pll/ecp5_25MHz_85MHz/supervisorclk/supervisorclk.sbx \
+            ../../pll/ecp5_25MHz_100MHz/supervisorclk/supervisorclk.sbx \
 			../../rtl/TG68K.C/TG68K_Pack.vhd ../../rtl/TG68K.C/TG68K_ALU.vhd ../../rtl/TG68K.C/TG68KdotC_Kernel.vhd \
 			../../rtl/jtag/vjtag_ecp5.sv ../../rtl/jtag/vjtag_sync_fifo.sv ../../rtl/jtag/jcapture.sv 
 

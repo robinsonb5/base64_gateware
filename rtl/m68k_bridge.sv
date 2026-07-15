@@ -16,12 +16,23 @@ typedef enum logic[3:0] {
 	RESET,
 	INIT,
 	S[0:7],
-	P[5:7]
+	P[5:7],
+	B[1:2]
 } m68k_state;
 
 m68k_state state;
 
 reg reset_pending;
+
+// Sychronise BG and BGACK;
+reg br_i,bgack_i;
+
+always @(posedge clks.sysclk) begin
+	if(clks.clk7_en_n) begin // Falling edge of clk7 according to 68000 UM
+		br_i <= m_misc_in.br;
+		bgack_i <= m_misc_in.bgack;
+	end
+end
 
 always @(posedge clks.sysclk) begin
 	case(state)
@@ -46,7 +57,7 @@ always @(posedge clks.sysclk) begin
 				state <= S0;
 			end
 		end
-		
+
 		S0: begin
 				// STATE 0 (posedge):
 				// The read cycle starts in state 0 (S0). The processor places valid function
@@ -62,10 +73,14 @@ always @(posedge clks.sysclk) begin
 					m_data_out.dq_en<=1'b1;// 0; // Data bus high-z
 				end
 
-				if(clks.clk7_en_p && (cpu_req.req!=cpu_resp.ack)) begin
+				// Bus arbitration
+				if(!br_i) begin // External device wants the bus
+					state <= B1;
+				end else if(clks.clk7_en_p && (cpu_req.req!=cpu_resp.ack)) begin // Regular cycle
 					m_misc_out.fc<={cpu_req.supervisor,cpu_req.ifetch,~cpu_req.ifetch};
 					state <= S1;
 				end
+
 
 			end
 			
@@ -127,18 +142,6 @@ always @(posedge clks.sysclk) begin
 
 					// The test for DTACK should happen at the negedge...
 					state <= S5;
-//					if(m_misc_in.dtack==1'b0) begin
-//						state <= S6;
-//					end
-//					if(m_misc_in.berr==1'b0) begin
-//						state <= S6;
-//					end
-//					if(m_misc_in.vpa==1'b0) begin
-//						if(!clks.e_internal && !m_misc_out.e) begin // E clock low
-//							m_misc_out.vma <= 1'b0;
-//							state <= P5;
-//						end
-//					end
 				end
 			end
 
@@ -160,7 +163,6 @@ always @(posedge clks.sysclk) begin
 							state <= P5;
 						end
 					end
-//					state <= S6;
 				end
 			end
 
@@ -209,6 +211,26 @@ always @(posedge clks.sysclk) begin
 					m_addr.lds<=1'b1;
 					m_misc_out.vma<=1'b1;
 					state <= S0;				
+				end
+			end
+
+		// Bus arbitration - assert _BG and wait for _BR to drop
+		B1: begin
+				m_misc_out.bg <= 1'b0;
+				if(clks.clk7_en_p) begin
+					if(br_i) begin	// External device has dropped _BR
+						state <= B2;
+					end
+				end
+			end
+
+		// Bus arbitration - _BR has dropped, release _BG and wait for BGACK to drop
+		B2: begin
+				m_misc_out.bg <= 1'b1;
+				if(clks.clk7_en_p) begin
+					if(bgack_i) begin
+						state <= S0;
+					end
 				end
 			end
 				

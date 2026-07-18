@@ -235,20 +235,17 @@ spi spi_inst (
 // SDRAM 
 
 wire sdram_ready;
-wire sdram_ack;
-wire [15:0] sdram_to_cpu;
-reg sdram_cs;
-reg sdram_we;
-wire [24:0] sdram_addr;
-reg [15:0] sdram_from_cpu;
-reg [1:0] sdram_ds;
 
-assign sdram_addr[18:0] = tg68_addr_d[18:0];
-assign sdram_addr[24:19] = sel_kickoverlay ? 6'h3f :
-                           sel_softkick ? 6'h3f :
-                           tg68_addr_d[24:19];
+sdram_request sdr_req[0:0];
+sdram_response sdr_resp[0:0];
+
+assign sdr_req[0].addr[18:0] =  tg68_addr_d[18:0];
+assign sdr_req[0].addr[24:19] = sel_kickoverlay ? 6'h3f :
+                             sel_softkick ? 6'h3f :
+                             tg68_addr_d[24:19];
 
 sdram #(
+	.ports(1),
 	.sysclk_freq(sysclk_freq)
 ) sdram_ctrl (
 	.sd_in(sdr_in),
@@ -257,13 +254,9 @@ sdram #(
 	.clk(clocks.sysclk),
 	.reset_n(clocks.reset_n_sys),
 	.ready(sdram_ready),
-	.din(sdram_from_cpu),
-	.dout(sdram_to_cpu),
-	.addr(sdram_addr),
-	.ds(sdram_ds),
-	.cs(sdram_cs),
-	.we(sdram_we),
-	.ack(sdram_ack)
+
+	.port_req(sdr_req),
+	.port_resp(sdr_resp)
 );
 
 // CPU to peripheral bridge state machine
@@ -317,7 +310,8 @@ always @(posedge clocks.sysclk) begin
 			cpu_req.req <= 1'b0;
 			clkena <= 1'b0;
             tg68_reset_in <= 1'b0;
-            sdram_cs <= 1'b0;
+            sdr_req[0].req <= 1'b0;
+			sdr_req[0].burst <= 1'b0;
 			state <= INIT;
 		end
 
@@ -339,12 +333,13 @@ always @(posedge clocks.sysclk) begin
 						clkena <= 1'b1;
 						state <= WAIT_INTERNAL;
 					end
-				end else if(slower[2] && !clkena) begin
+				end else if(slower[1] && !clkena) begin
 					if(sel_fast24 || sel_fast32) begin // We need to handle Fast RAM requests as promptly as possible
-						sdram_we <= tg68_state == STATE_WRITE ? 1'b1 : 1'b0;
-						sdram_from_cpu <= tg68_dout;
-						sdram_ds <= {tg68_uds,tg68_lds};
-						sdram_cs <= 1'b1;
+						sdr_req[0].we <= tg68_state == STATE_WRITE ? 1'b1 : 1'b0;
+						sdr_req[0].d <= tg68_dout;
+						sdr_req[0].dm <= {tg68_uds,tg68_lds};
+						sdr_req[0].burst <= 1'b0;
+						sdr_req[0].req <= 1'b1;
 						state <= FASTRAM;
 					end else begin
 						state <= REQ;	// Handle other requests a cycle later
@@ -354,18 +349,18 @@ always @(posedge clocks.sysclk) begin
 		end
 		
 		FASTRAM : begin
-			if(sdram_ack) begin
-				sdram_cs <= 1'b0;
+			if(sdr_resp[0].ack) begin
+				sdr_req[0].req <= 1'b0;
 				case(selecteddevice)
 					DEVICE_JTAG : begin
-							jtag_user_d <= sdram_to_cpu;
+							jtag_user_d <= {16'b0,sdr_resp[0].q};
 							selecteddevice <= DEVICE_CPU;
 							jtag_user_ack <= jtag_user_req;
 							jtag_user_stb <= 1'b1;
 							state <= WAIT_INTERNAL;
 						end
 					default : begin
-							tg68_din <= sdram_to_cpu;
+							tg68_din <= sdr_resp[0].q;
 							clkena <= 1'b1;
 							state <= DECODE;
 						end
@@ -437,7 +432,11 @@ always @(posedge clocks.sysclk) begin
 				bootrom_we <= ~tg68_wr;
 				state <= ROM;
 
-			end else if(sel_autoconfig) begin
+			end else if(sel_autoconfig && !ac_done) begin
+				// Autoconfig - once we've configured our own devices
+				// the autoconfig address range goes to the motherboard
+				// where any "real" autoconfig devices will be configured
+				// as usual.
 				ac_wr<=(tg68_state == STATE_WRITE) ? 1'b1 : 1'b0;
 				ac_d <= tg68_dout;
 				state <= AUTOCONFIG;
@@ -449,9 +448,9 @@ always @(posedge clocks.sysclk) begin
 				state <= DECODE;
 
 			end else if(sel_kickoverlay || sel_softkick) begin
-				sdram_we <= 1'b0;
-				sdram_ds <= 2'b00;
-				sdram_cs <= 1'b1;
+				sdr_req[0].we <= 1'b0;
+				sdr_req[0].dm <= 2'b00;
+				sdr_req[0].req <= 1'b1;
 				state <= FASTRAM;
 			end else begin
 
@@ -461,13 +460,13 @@ always @(posedge clocks.sysclk) begin
 				cpu_req.addr <= tg68_addr_d;
 				if(selecteddevice==DEVICE_JTAG) begin
 					if(jtag_sel_fast24 || jtag_sel_fast32) begin // SDRAM
-						sdram_we <= jtag_user_wr;
-						sdram_from_cpu <= jtag_user_q;
-						sdram_ds <= 2'b00;
-						sdram_cs <= 1'b1;
+						sdr_req[0].we <= jtag_user_wr;
+						sdr_req[0].d <= jtag_user_q[15:0];
+						sdr_req[0].dm <= 2'b00;
+						sdr_req[0].req <= 1'b1;
 						state <= FASTRAM;
 					end else begin
-						cpu_req.d <= jtag_user_q;
+						cpu_req.d <= jtag_user_q[15:0];
 						cpu_req.dm <= 2'b11; // Probably don't need byte-level access over JTAG.
 						cpu_req.wr <= jtag_user_wr;
 						cpu_req.ifetch <= 1'b0;
@@ -527,7 +526,7 @@ always @(posedge clocks.sysclk) begin
 			if(slower[0] && (cpu_resp.ack==cpu_req.req)) begin
 				case(selecteddevice)
 					DEVICE_JTAG : begin
-							jtag_user_d <= cpu_resp.q;
+							jtag_user_d <= {16'b0,cpu_resp.q};
 							selecteddevice <= DEVICE_CPU;
 							jtag_user_ack <= jtag_user_req;
 							jtag_user_stb <= 1'b1;
@@ -663,7 +662,7 @@ jcapture #(
 	.capture_d(jtag_d),
 	.user_ir(user_ir),
 	.user_ir_update(),
-	.user_d(jtag_user_d),
+	.user_d({11'b0,jtag_user_d}),
 	.user_q(jtag_q),
 	.user_update(jtag_update)
 );
@@ -702,7 +701,7 @@ always @(posedge clocks.sysclk) begin
 
 			usercmd_write : begin
 				jtag_user_wr <= 1'b1;
-				jtag_user_q <= jtag_q;
+				jtag_user_q <= jtag_q[31:0];
 				jtag_user_req <= ~jtag_user_ack;
 			end
 

@@ -8,8 +8,7 @@ module hostclocks #(parameter phase=2) (
 	input clk7,
 	input clk85,
 	input fpgaclk,
-	output m68k_clocks cpu_clocks,
-	output reg clk7out // for debugging
+	output m68k_clocks cpu_clocks
 );
 
 wire sysclk;

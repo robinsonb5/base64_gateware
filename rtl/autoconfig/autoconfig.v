@@ -48,7 +48,7 @@ begin
 	if(!reset_n)
 	begin
 		init<=1'b1;
-		board_configured<=6'b000000;
+		board_configured<={AC_BOARDS{1'b0}};
 		acdevice<=3'b000;
 		ramsize<=4'b1111;	// Disable RAM briefly at reset
 		roma_wr<=9'h001;

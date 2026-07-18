@@ -70,18 +70,16 @@ always @(posedge clks.sysclk) begin
 					m_addr.a_en<=1'b0;
 					m_addr.drive<=1'b0; // Address bus still needs to be high-z.
 					m_data_out.drive<=1'b0;
-					m_data_out.dq_en<=1'b1;// 0; // Data bus high-z
+					m_data_out.dq_en<=1'b0; // Data bus high-z
+
+					// Bus arbitration
+					if(!br_i) begin // External device wants the bus
+						state <= B1;
+					end else if(cpu_req.req!=cpu_resp.ack) begin // Regular cycle
+						m_misc_out.fc<={cpu_req.supervisor,cpu_req.ifetch,~cpu_req.ifetch};
+						state <= S1;
+					end
 				end
-
-				// Bus arbitration
-				if(!br_i) begin // External device wants the bus
-					state <= B1;
-				end else if(clks.clk7_en_p && (cpu_req.req!=cpu_resp.ack)) begin // Regular cycle
-					m_misc_out.fc<={cpu_req.supervisor,cpu_req.ifetch,~cpu_req.ifetch};
-					state <= S1;
-				end
-
-
 			end
 			
 		S1: begin

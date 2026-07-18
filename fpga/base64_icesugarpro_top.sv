@@ -134,15 +134,13 @@ wire clkfastin;
 `endif
 
 m68k_clocks clocks;
-wire clk7out;
 
 // Clocking - FIXME, if we start using the fast clock, select multiplier based on board revision.
 hostclocks #(.phase(1)) hostclocks (
 	.clk7(clk7in),
 	.clk85(clkfastin),
 	.fpgaclk(clk_i),
-	.cpu_clocks(clocks),
-	.clk7out(clk7out)
+	.cpu_clocks(clocks)
 );
 
 assign sdram_clk=clocks.ramclk;
